@@ -3,5 +3,6 @@ import Quickshell
 import Quickshell.Wayland
 
 ShellRoot {
-  Pill {}   
+  Pill {}
+  Rounding {}
 }
