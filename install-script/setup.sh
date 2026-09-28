@@ -113,6 +113,7 @@ CONFIG_FOLDERS=(
     wlogout
     fastfetch
     quickshell
+    quickshell-test
 )
 
 if confirm_copy ".config"; then
