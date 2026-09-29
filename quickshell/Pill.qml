@@ -16,25 +16,25 @@ PanelWindow {
   // LAUNCHER: the one on/off switch. The keybind flips it, Escape/launching an app clears it.
   property bool launcherActive: false
 
+  // FIX 1: this used to be `pill.rootTimer.running`, which failed because an `id`
+  // is NOT a property of the object it lives in, so `pill.rootTimer` was undefined
+  // and this stayed false forever. Now we go through `pill.rootTimer`, which is a
+  // real property (an alias declared inside `pill` below) pointing at the Timer.
+  // While the timer runs (1s after a workspace switch) the workspaces are shown.
+  property bool showWorkspaces: pill.rootTimer.running
+
   color: "transparent"
   anchors { top: true; left: true; right: true }
 
-  // LAUNCHER: window is now tall enough to fit the biggest launcher list.
-  // It's transparent and `mask` below limits clicks to the pill, so you won't notice.
-  // (Kept constant on purpose: resizing the window every frame would jitter.)
   implicitHeight: pillHeight * 14
   margins { top: 10 }
 
   WlrLayershell.layer: WlrLayer.Top
 
-  // LAUNCHER: lets the search box receive keystrokes while the launcher is open.
-  // OnDemand (not Exclusive) so it can never lock your keyboard/mouse out.
   WlrLayershell.keyboardFocus: root.launcherActive
       ? WlrKeyboardFocus.OnDemand
       : WlrKeyboardFocus.None
 
-  // LAUNCHER: Hyprland-side focus. Gives the launcher keyboard focus when it opens
-  // and closes it when you click anywhere outside the pill, so you can't get stuck.
   HyprlandFocusGrab {
     windows: [ root ]
     active: root.launcherActive
@@ -55,13 +55,26 @@ PanelWindow {
     item: pill
   }
 
+  Connections {
+    target: Hyprland
+    function onFocusedWorkspaceChanged() {
+      pill.rootTimer.restart()
+    }
+  }
+
   Rectangle {
     id: pill
+
+    // FIX 1 (other half): expose the Timer as a real property so `root` can reach it.
+    // Without this alias, only code inside this Rectangle could see `rootTimer`.
+    property alias rootTimer: rootTimer
 
     HoverHandler { id: hover }
     property bool isHovered: hover.hovered
 
     property bool isOpen: isHovered || root.launcherActive
+    // (unused right now, safe to delete or use later)
+    property bool isShowing: isHovered || root.showWorkspaces
 
     implicitHeight: {
       if (root.launcherActive && launcherLoader.item)
@@ -70,6 +83,7 @@ PanelWindow {
     }
     implicitWidth: root.launcherActive ? root.pillHeight * 16
                 : isHovered           ? root.pillHeight * 18
+                : root.showWorkspaces           ? root.pillHeight * 4
                 :                       root.pillHeight * 3
 
     radius: isOpen ? root.radius * 2 : root.radius
@@ -92,6 +106,13 @@ PanelWindow {
       NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
     }
 
+    Timer {
+      id: rootTimer
+      interval: 1000
+      running: false
+      repeat: false
+    }
+
     Loader {
       id: launcherLoader
       anchors.fill: parent
@@ -100,14 +121,27 @@ PanelWindow {
       active: root.launcherActive
       sourceComponent: Launcher {}
     }
+    Loader {
+      id: wsLoader
+      anchors.horizontalCenter: parent.horizontalCenter
+      anchors.verticalCenter: parent.verticalCenter
+      active: root.showWorkspaces
+      visible: root.showWorkspaces
+      sourceComponent: Workspaces {}
+      opacity: root.showWorkspaces ? 1 : 0
+
+      Behavior on opacity {
+        NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+      }
+    }
 
     Connections {
       target: launcherLoader.item
       function onCloseRequested() { root.launcherActive = false }
     }
 
-    Clock { visible: !root.launcherActive }
-    Date { hovered: pill.isHovered; visible: !root.launcherActive }
-    Battery { visible: !root.launcherActive }
+    Clock { visible: !root.launcherActive && !root.showWorkspaces }
+    Date { hovered: pill.isHovered; visible: !root.launcherActive && !root.showWorkspaces }
+    Battery { visible: !root.launcherActive && !root.showWorkspaces }
   }
 }
