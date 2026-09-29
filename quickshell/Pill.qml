@@ -68,7 +68,7 @@ PanelWindow {
         return launcherLoader.item.implicitHeight + 20
       return isHovered ? root.pillHeight * 3 : root.pillHeight
     }
-    implicitWidth: root.launcherActive ? root.pillHeight * 15
+    implicitWidth: root.launcherActive ? root.pillHeight * 16
                 : isHovered           ? root.pillHeight * 18
                 :                       root.pillHeight * 3
 

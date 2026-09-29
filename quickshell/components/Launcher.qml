@@ -14,7 +14,7 @@ Item {
   readonly property int rowHeight: 46
   readonly property int rowSpacing: 4
   readonly property int maxVisibleRows: 6
-  readonly property int searchBarHeight: 40
+  readonly property int searchBarHeight: 60
   readonly property int sectionSpacing: 10
   readonly property int maxRecents: 6
 
@@ -110,7 +110,7 @@ Item {
       ? rowHeight
       : visibleRows * rowHeight + (visibleRows - 1) * rowSpacing
 
-  implicitWidth: 420
+  implicitWidth: 480
   implicitHeight: searchBarHeight + sectionSpacing + listHeight
       + (showingRecents && recentApps.length > 0 ? headerLabel.implicitHeight + 4 : 0)
 
@@ -153,7 +153,8 @@ Item {
         color: "#e8eaed"
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.verticalCenter: parent.verticalCenter
-        anchors.horizontalCenterOffset: -195
+        anchors.horizontalCenterOffset: -210
+        anchors.verticalCenterOffset: -5
 
         Behavior on anchors.horizontalCenterOffset {
             NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
@@ -168,7 +169,7 @@ Item {
       Rectangle {
         implicitHeight: 0.6
         radius: 16
-        implicitWidth: 420
+        implicitWidth: 450
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.verticalCenter: parent.verticalCenter
         anchors.verticalCenterOffset: 20
@@ -179,6 +180,7 @@ Item {
         anchors.fill: parent
         anchors.leftMargin: 40
         anchors.rightMargin: 14
+        anchors.bottomMargin: 12
         verticalAlignment: TextInput.AlignVCenter
         focus: true
         color: "#e8eaed"
@@ -234,8 +236,23 @@ Item {
 
         width: resultsList.width
         implicitHeight: root.rowHeight
-        radius: 18
-        color: resultsList.currentIndex === index ? "#80d4dc" : "transparent"
+        radius: 12
+        color: resultsList.currentIndex === index ? "#313036" : "transparent"
+
+        Rectangle {
+          implicitWidth: resultsList.currentIndex === index ? 4 : 0
+          implicitHeight: resultsList.currentIndex === index ? 20 : 0
+          anchors.verticalCenter: parent.verticalCenter
+          radius: 16
+
+          Behavior on implicitWidth {
+            NumberAnimation { duration: 100; easing.type: Easing.OutCubic }
+          }
+
+          Behavior on implicitHeight {
+            NumberAnimation { duration: 100 }
+          }
+        }
 
         Behavior on color {
           ColorAnimation { duration: 100 }
