@@ -49,7 +49,7 @@ Rectangle {
     anchors.horizontalCenter: parent.horizontalCenter
     anchors.verticalCenter: parent.verticalCenter
     anchors.horizontalCenterOffset: root.hovered ? -35 : 0
-    anchors.verticalCenterOffset: root.hovered ? -1 : 0
+    anchors.verticalCenterOffset: root.hovered ? 3 : 0
     text: Qt.formatDateTime(clock.date, "ddd, MMM")
     color: "#e8eaed"
     opacity: root.hovered ? 1 : 0
@@ -62,8 +62,8 @@ Rectangle {
   Text {
     anchors.horizontalCenter: parent.horizontalCenter
     anchors.verticalCenter: parent.verticalCenter
-    anchors.horizontalCenterOffset: root.hovered ? 5 : 0
-    anchors.verticalCenterOffset: root.hovered ? -0.5 : 0
+    anchors.horizontalCenterOffset: root.hovered ? 0 : 0
+    anchors.verticalCenterOffset: root.hovered ? 4.5 : 0
     text: root.dayOffset(-1)
     color: "#FF0000"
     opacity: root.hovered ? 1 : 0
@@ -72,26 +72,32 @@ Rectangle {
   }
 
 // for current date
-
-  Text {
+Rectangle {
     anchors.horizontalCenter: parent.horizontalCenter
     anchors.verticalCenter: parent.verticalCenter
     anchors.horizontalCenterOffset: root.hovered ? 25 : 0
-    anchors.verticalCenterOffset: root.hovered ? -2 : 0
+    anchors.verticalCenterOffset: root.hovered ? 5 : 0
+    color: "#1e1e4d"
+    radius: 6
+    implicitHeight: pill.isHovered ? 28 : 0
+    implicitWidth: pill.isHovered ? 22 : 0
+    Text {
+      anchors.centerIn: parent
     text: root.dayOffset(0)
     color: "#e8eaed"
     opacity: root.hovered ? 1 : 0
     Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
     font { family: "SF Pro Display Font"; letterSpacing: -1; pixelSize: 16; weight: 900 }
   }
+}
 
 // for tomorrow date
 
   Text {
     anchors.horizontalCenter: parent.horizontalCenter
     anchors.verticalCenter: parent.verticalCenter
-    anchors.horizontalCenterOffset: root.hovered ? 45 : 0
-    anchors.verticalCenterOffset: root.hovered ? -0.5 : 0
+    anchors.horizontalCenterOffset: root.hovered ? 48 : 0
+    anchors.verticalCenterOffset: root.hovered ? 4.5 : 0
     text: root.dayOffset(1)
     color: "#32cd32"
     opacity: root.hovered ? 1 : 0
