@@ -10,7 +10,7 @@
 //   5. the pill Rectangle: its size, shape, and everything drawn inside it
 //
 // Modes, in priority order for sizing:
-//   wallpaper strip > launcher > menu > volume/brightness popup > hover > idle
+//   wallpaper strip > theme > launcher > menu > volume/brightness popup > hover > idle
 // ─────────────────────────────────────────────────────────────────────────────
 import Quickshell
 import QtQuick
@@ -33,10 +33,15 @@ PanelWindow {
   // ───── MODES: each is a simple on/off switch ─────
   // LAUNCHER: the keybind flips it, Escape/launching an app clears it.
   property bool launcherActive: false
-  // MENU: same idea, flipped by `ipc call menu toggle`.
+  // MENU: LayoutMenu (Wallpaper / Theme). Flipped by `ipc call menu toggle`.
   property bool menuActive: false
   // WALLPAPER: the wallpaper strip. Flipped by `ipc call wallpaper toggle`.
   property bool wallpaperActive: false
+  // THEME: the theme list. Flipped by `ipc call theme toggle`.
+  property bool themeActive: false
+
+  // true while any big mode owns the pill (used to hide OSDs / idle content)
+  readonly property bool anyModeOpen: launcherActive || menuActive || wallpaperActive || themeActive
 
   // WORKSPACES: true for 1s after the focused workspace changes (see rootTimer below).
   property bool showWorkspaces: pill.rootTimer.running
@@ -60,7 +65,7 @@ PanelWindow {
 
   // Show the volume popup and (re)start its hide timer.
   function pokeVolume() {
-    if (launcherActive || wallpaperActive) return   // don't pop up over the launcher / wallpaper strip
+    if (anyModeOpen) return   // don't pop up over an open menu
     showBrightness = false                          // volume and brightness never show together
     showVolume = true
     volumeTimer.restart()
@@ -99,7 +104,7 @@ PanelWindow {
     const pct = parseInt(line.split(",")[3]) / 100
     if (isNaN(pct)) return
     // first read just sets the baseline, so no popup at startup
-    if (brightnessReady && pct !== brightness && !launcherActive && !wallpaperActive) {
+    if (brightnessReady && pct !== brightness && !anyModeOpen) {
       showVolume = false
       showBrightness = true
       brightnessTimer.restart()
@@ -127,9 +132,7 @@ PanelWindow {
 
   // The window only takes keyboard input while a keyboard-driven mode is open,
   // otherwise typing would go to the pill instead of your apps.
-  // NOTE: the launcher part needs launcherActive AND menuActive to be true, which
-  // looks unintended. `||` is probably what you meant there (left as you wrote it).
-  WlrLayershell.keyboardFocus: ((root.launcherActive && root.menuActive) || root.wallpaperActive)
+  WlrLayershell.keyboardFocus: root.anyModeOpen
       ? WlrKeyboardFocus.OnDemand
       : WlrKeyboardFocus.None
 
@@ -149,6 +152,11 @@ PanelWindow {
     active: root.wallpaperActive
     onCleared: root.wallpaperActive = false
   }
+  HyprlandFocusGrab {
+    windows: [ root ]
+    active: root.themeActive
+    onCleared: root.themeActive = false
+  }
 
   // Reserve this much space at the top so windows don't open underneath the pill.
   exclusiveZone: pillHeight
@@ -161,6 +169,8 @@ PanelWindow {
 
     function toggle(): void {
       root.wallpaperActive = false
+      root.menuActive = false
+      root.themeActive = false
       root.launcherActive = !root.launcherActive
     }
   }
@@ -168,7 +178,9 @@ PanelWindow {
     target: "menu"
 
     function toggle(): void {
+      root.launcherActive = false
       root.wallpaperActive = false
+      root.themeActive = false
       root.menuActive = !root.menuActive
     }
   }
@@ -178,9 +190,21 @@ PanelWindow {
     function toggle(): void {
       root.launcherActive = false
       root.menuActive = false
+      root.themeActive = false
       root.wallpaperActive = !root.wallpaperActive
     }
   }
+  IpcHandler {
+    target: "theme"
+
+    function toggle(): void {
+      root.launcherActive = false
+      root.menuActive = false
+      root.wallpaperActive = false
+      root.themeActive = !root.themeActive
+    }
+  }
+
 
   // Only the pill area receives mouse input. The rest of the window is click-through.
   mask: Region {
@@ -209,7 +233,7 @@ PanelWindow {
     property bool isHovered: hover.hovered
 
     // "Open" pills get rounder bottom corners (see the radius lines below).
-    property bool isOpen: isHovered || root.launcherActive || root.wallpaperActive
+    property bool isOpen: isHovered || root.anyModeOpen
     // (unused right now, safe to delete or use later)
     property bool isShowing: isHovered || root.showWorkspaces
 
@@ -217,19 +241,22 @@ PanelWindow {
     implicitHeight: {
       if (root.wallpaperActive && wallLoader.item)       // wallpaper strip: its own height + padding
         return wallLoader.item.implicitHeight + 20
+      if (root.themeActive && themeLoader.item)          // theme list
+        return themeLoader.item.implicitHeight + 20
       if (root.launcherActive && launcherLoader.item)    // launcher: as tall as its content + padding
         return launcherLoader.item.implicitHeight + 20
+      if (root.menuActive && menuLoader.item)            // layout menu
+        return menuLoader.item.implicitHeight + 20
       if (root.showVolume)                               // OSDs: just slightly taller than idle
         return root.pillHeight + 5
       if (root.showBrightness)
         return root.pillHeight + 5
-      if (root.menuActive && menuLoader.item)
-        return menuLoader.item.implicitHeight + 20
       return isHovered ? root.pillHeight * 4 : root.pillHeight   // hover expands, else idle
     }
 
     // WIDTH: same idea, first match wins.
     implicitWidth: root.wallpaperActive ? root.pillHeight * 24     // wide: the strip needs room for 9 thumbs
+                : root.themeActive ? root.pillHeight * 16
                 : root.launcherActive ? root.pillHeight * 16
                 : root.menuActive ? root.pillHeight * 16
                 : isHovered           ? root.pillHeight * 18
@@ -300,14 +327,23 @@ PanelWindow {
       active: root.launcherActive
       sourceComponent: Launcher {}
     }
-    // Menu
+    // Layout menu (components/LayoutMenu.qml)
     Loader {
       id: menuLoader
       anchors.fill: parent
       anchors.margins: 10
 
       active: root.menuActive
-      sourceComponent: Menu {}
+      sourceComponent: LayoutMenu {}
+    }
+    // Theme list (components/Theme.qml)
+    Loader {
+      id: themeLoader
+      anchors.fill: parent
+      anchors.margins: 10
+
+      active: root.themeActive
+      sourceComponent: Theme {}
     }
     // Wallpaper strip (components/WallpaperPicker.qml)
     Loader {
@@ -318,13 +354,14 @@ PanelWindow {
       active: root.wallpaperActive
       sourceComponent: WallpaperPicker {}
     }
+
     // Workspace dots, fades in/out
     Loader {
       id: wsLoader
       anchors.horizontalCenter: parent.horizontalCenter
       anchors.verticalCenter: parent.verticalCenter
-      active: root.showWorkspaces && !root.wallpaperActive
-      visible: root.showWorkspaces && !root.wallpaperActive
+      active: root.showWorkspaces && !root.anyModeOpen
+      visible: root.showWorkspaces && !root.anyModeOpen
       sourceComponent: Workspaces {}
       opacity: root.showWorkspaces ? 1 : 0
 
@@ -347,6 +384,10 @@ PanelWindow {
       target: wallLoader.item
       function onCloseRequested() { root.wallpaperActive = false }
     }
+    Connections {
+      target: themeLoader.item
+      function onCloseRequested() { root.themeActive = false }
+    }
 
     // ───── OSDs ─────
     // Hidden while any bigger mode is showing.
@@ -355,7 +396,7 @@ PanelWindow {
       vol: root.vol
       muted: root.muted
       opacity: visible ? 1 : 0
-      visible: root.showVolume && !root.launcherActive && !root.showWorkspaces && !root.menuActive && !root.wallpaperActive
+      visible: root.showVolume && !root.anyModeOpen && !root.showWorkspaces
       Behavior on opacity {
         NumberAnimation { duration: 2000; easing.type: Easing.OutCubic }
       }
@@ -365,7 +406,7 @@ PanelWindow {
       anchors.centerIn: parent
       level: root.brightness
       opacity: visible ? 1 : 0
-      visible: root.showBrightness && !root.launcherActive && !root.showWorkspaces && !root.menuActive && !root.wallpaperActive
+      visible: root.showBrightness && !root.anyModeOpen && !root.showWorkspaces
       Behavior on opacity {
         NumberAnimation { duration: 2000; easing.type: Easing.OutCubic }
       }
@@ -373,8 +414,8 @@ PanelWindow {
 
     // ───── IDLE CONTENT ─────
     // The normal clock / date / battery, hidden whenever anything else is using the pill.
-    Clock { visible: !root.launcherActive && !root.showWorkspaces && !root.showVolume && !root.showBrightness && !root.menuActive && !root.wallpaperActive }
-    Date { hovered: pill.isHovered; visible: !root.launcherActive && !root.showWorkspaces && !root.showVolume && !root.showBrightness && !root.menuActive && !root.wallpaperActive }
-    Battery { visible: !root.launcherActive && !root.showWorkspaces && !root.showVolume && !root.showBrightness && !root.menuActive && !root.wallpaperActive }
+    Clock { visible: !root.anyModeOpen && !root.showWorkspaces && !root.showVolume && !root.showBrightness }
+    Date { hovered: pill.isHovered; visible: !root.anyModeOpen && !root.showWorkspaces && !root.showVolume && !root.showBrightness }
+    Battery { visible: !root.anyModeOpen && !root.showWorkspaces && !root.showVolume && !root.showBrightness }
   }
 }

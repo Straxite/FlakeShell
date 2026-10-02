@@ -16,7 +16,9 @@ Item {
     }
 
     // ───── CONFIG: the two things you might want to change ─────
+    // Fallback folder. The theme menu overrides it by writing a path into wallDirFile.
     property string wallDir: Quickshell.env("HOME") + "/Pictures/Wallpapers"
+    readonly property string wallDirFile: Quickshell.env("HOME") + "/.cache/quickshell-wallpaper-dir"
     // Wallpaper application is handled step-by-step below so failures do not
     // silently prevent Matugen or the notification from running.
     function applyCommand(path) {
@@ -81,9 +83,23 @@ Item {
         }
     }
 
+    // read the folder chosen by the theme menu (if any), THEN list it
+    Process {
+        id: dirReader
+        running: true
+        command: ["sh", "-c", 'cat -- "$1" 2>/dev/null || true', "sh", root.wallDirFile]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const d = text.trim()
+                if (d !== "") root.wallDir = d
+                lister.running = true
+            }
+        }
+    }
+
     Process {
         id: lister
-        running: true
+        running: false
         // find image files in the folder, newest first, one path per line
         command: ["sh", "-c",
             "find \"$1\" -maxdepth 1 -type f \\( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \\) -printf '%T@\\t%p\\n' | sort -rn | cut -f2-",
@@ -207,7 +223,7 @@ Item {
         anchors.top: parent.top
         anchors.leftMargin: 16
         anchors.topMargin: 4
-        text: "Wallpaper"
+        text: "Wallpaper  •  " + root.wallDir.split("/").pop()
         color: "#eeffffff"
         font.pixelSize: 13
         font.weight: Font.Medium
