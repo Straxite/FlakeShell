@@ -23,16 +23,18 @@ hl.bind(mainMod .. " + V", function()
     hl.dispatch(hl.dsp.window.resize({ exact = true, x = 1200, y = 800 }))
 end)
 hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen({ action = "toggle" }))
--- hl.bind(alt .. " + SPACE", hl.dsp.exec_cmd("~/.config/rofi/launchers/launcher.sh || pkill rofi"))
+-- hl.bind(alt .. " + SPACE", hl.dsp.exec_cmd("qs ipc call launcher toggle"))
 hl.bind(alt .. " + SPACE", hl.dsp.exec_cmd("qs ipc call launcher toggle"))
+-- hl.bind(mainMod .. " + PERIOD", hl.dsp.exec_cmd("qs ipc call control toggle"))
+-- hl.bind(mainMod .. " + R", hl.dsp.exec_cmd("qs kill | qs"))
 hl.bind(mainMod .. " + J", hl.dsp.layout("togglesplit"))    -- dwindle only
 hl.bind(mainMod .. " + M", hl.dsp.exec_cmd("wlogout -b 6 -m 400 -r 20 -c 20 --buttons-per-row 5"))
-hl.bind(mainMod .. " + SPACE", hl.dsp.exec_cmd("~/.config/rofi/layouts/layout.sh"))
+hl.bind(mainMod .. " + SPACE", hl.dsp.exec_cmd("qs ipc call menu toggle"))
 hl.bind(mainMod .. " + PRINT", hl.dsp.exec_cmd("hyprshot -m region && satty --filename -"))
 -- hl.bind(alt .. " + TAB", hl.dsp.exec_cmd("snappy-switcher toggle"))
 -- hl.bind(alt .. " + TAB", hl.dsp.exec_cmd("snappy-switcher next"))
 hl.bind(mainMod .. " + A", hl.dsp.exec_cmd("swaync-client -t"))
-hl.bind(mainMod .. " + H", hl.dsp.exec_cmd("helium-browser"))
+hl.bind(mainMod .. " + H", hl.dsp.exec_cmd("brave"))
 hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("~/.config/hypr/scripts/lutgen.sh"))
 hl.bind(alt .. " + Z", hl.dsp.exec_cmd("gsr-ui"))
 hl.bind(mainMod .. " + Y", hl.dsp.exec_cmd("kitty --class yazi -e yazi"))
@@ -57,7 +59,9 @@ hl.bind("SUPER + UP", hl.dsp.focus( { direction = "up" } ))
 hl.bind("SUPER + DOWN", hl.dsp.focus( { direction = "down" } ))
 
 -- For waybar
-hl.bind(mainMod .. " + W", hl.dsp.exec_cmd("~/.config/waybar/scripts/waybar.sh"))
+-- hl.bind(mainMod .. " + W", hl.dsp.exec_cmd("~/.config/waybar/scripts/waybar.sh"))
+hl.bind(mainMod .. " + W", hl.dsp.exec_cmd("qs ipc call wallpaper toggle"))
+-- hl.bind(mainMod .. " + W", hl.dsp.exec_cmd("qs ipc call wallpaper toggle"))
 
 -- Switch workspaces with mainMod + [0-9]
 -- Move active window to a workspace with mainMod + SHIFT + [0-9]
