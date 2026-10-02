@@ -15,6 +15,9 @@ Item {
         // Want just the number? Change this to: text: parent.wsId
         text: "Workspace " + parent.wsId
         color: "#ffffff"
+        Behavior on text {
+          NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
+        }
 
         font {
             family: "SF Pro Display"
