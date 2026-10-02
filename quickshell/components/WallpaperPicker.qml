@@ -12,8 +12,9 @@ Item {
     id: root
     opacity: pill.isOpen ? 1 : 0
     Behavior on opacity {
-      NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+        NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
     }
+
     // ───── CONFIG: the two things you might want to change ─────
     property string wallDir: Quickshell.env("HOME") + "/Pictures/Wallpapers"
     // Wallpaper application is handled step-by-step below so failures do not
@@ -25,17 +26,38 @@ Item {
     // Persistent wallpaper selection.
     // The full path is stored so the selection survives sorting/order changes.
     readonly property string wallpaperStateFile: Quickshell.env("HOME") + "/.cache/quickshell-wallpaper-selected"
-    property string savedWallpaper: "" 
+    property string savedWallpaper: ""
 
     signal closeRequested()   // Pill.qml listens to this and closes the strip
 
     implicitHeight: 100       // Pill adds its own padding on top of this
 
     // ───── state ─────
-    property var files: []            // full paths, newest first
-    property int focusIndex: 0        // which wallpaper is selected
-    property real pos: 0              // smooth "camera" position that chases focusIndex
+    property var allFiles: []        // all wallpapers, newest first
+    property var files: []           // currently visible/search-filtered wallpapers
+    property int focusIndex: 0
+    property real pos: 0
+    property string searchQuery: ""
     readonly property int count: files.length
+
+    function updateSearch() {
+        const q = root.searchQuery.trim().toLowerCase()
+        root.files = q === "" ? root.allFiles : root.allFiles.filter(path => path.split("/").pop().toLowerCase().includes(q))
+        root.focusIndex = 0
+        root.pos = 0
+        root.restoreSelection()
+    }
+
+    function searchKey(event) {
+        if (event.key === Qt.Key_Backspace) { root.searchQuery = root.searchQuery.slice(0, -1); root.updateSearch(); return true }
+        if (event.key === Qt.Key_Space) { root.searchQuery += " "; root.updateSearch(); return true }
+        if (event.text && event.text.length > 0 && !event.modifiers && /^[A-Za-z0-9._-]$/.test(event.text)) {
+            root.searchQuery += event.text
+            root.updateSearch()
+            return true
+        }
+        return false
+    }
 
     // ───── 1. find the wallpapers ─────
     Process {
@@ -68,10 +90,8 @@ Item {
             "sh", root.wallDir]
         stdout: StdioCollector {
             onStreamFinished: {
-                root.files = text.split("\n").filter(l => l.length > 0)
-                root.focusIndex = 0
-                root.pos = 0
-                root.restoreSelection()
+                root.allFiles = text.split("\n").filter(l => l.length > 0)
+                root.updateSearch()
             }
         }
     }
@@ -181,6 +201,68 @@ Item {
     readonly property int poolSize: 11
     readonly property int winLo: Math.round(pos) - 5
 
+    // ───── 5.5. HUD ─────
+    Text {
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.leftMargin: 16
+        anchors.topMargin: 4
+        text: "Wallpaper"
+        color: "#eeffffff"
+        font.pixelSize: 13
+        font.weight: Font.Medium
+        z: 100
+    }
+
+    Text {
+        id: countText
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.rightMargin: 16
+        anchors.topMargin: 8
+        text: root.searchQuery.length > 0 ? root.searchQuery + "  •  " + (root.count > 0 ? root.focusIndex + 1 : 0) + "/" + root.count : (root.count > 0 ? root.focusIndex + 1 : 0) + "/" + root.count
+        color: "#bbffffff"
+        font.pixelSize: 11
+        horizontalAlignment: Text.AlignRight
+        z: 100
+    }
+
+    Text {
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.rightMargin: 16
+        anchors.bottomMargin: 7
+        text: "← / →   •   Return ↵"
+        color: "#88ffffff"
+        font.pixelSize: 10
+        z: 100
+    }
+
+    Rectangle {
+        visible: root.searchQuery.length > 0
+        anchors.right: countText.left
+        anchors.top: parent.top
+        anchors.topMargin: 5
+        anchors.rightMargin: 10
+        width: Math.min(150, root.width * 0.25)
+        height: 24
+        radius: 7
+        color: "#18ffffff"
+        border.width: 1
+        border.color: "#30ffffff"
+        z: 101
+        Text {
+            anchors.fill: parent
+            anchors.leftMargin: 9
+            anchors.rightMargin: 9
+            verticalAlignment: Text.AlignVCenter
+            text: root.searchQuery
+            color: "#eeffffff"
+            font.pixelSize: 11
+            elide: Text.ElideLeft
+        }
+    }
+
     Repeater {
         model: root.poolSize
 
@@ -282,11 +364,14 @@ Item {
     Component.onCompleted: forceActiveFocus()
     Keys.onPressed: event => {
         let handled = true
-        if (event.key === Qt.Key_Left || event.key === Qt.Key_H) move(-1)
+        if (event.key === Qt.Key_Escape) {
+            if (root.searchQuery.length > 0) { root.searchQuery = ""; root.updateSearch() }
+            else closeRequested()
+        }
+        else if (event.key === Qt.Key_Left || event.key === Qt.Key_H) move(-1)
         else if (event.key === Qt.Key_Right || event.key === Qt.Key_L) move(1)
         else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) apply(focusIndex)
-        else if (event.key === Qt.Key_Escape) closeRequested()
-        else handled = false
+        else handled = root.searchKey(event)
         event.accepted = handled
     }
 }
