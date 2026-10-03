@@ -87,6 +87,122 @@ Item {
     return ranked
   }
 
+  // Freedesktop category -> words people actually type. Lets "browser"
+  // find every app tagged WebBrowser, "editor" every TextEditor, etc.
+  readonly property var categoryAliases: ({
+    "WebBrowser": ["browser", "web", "internet"],
+    "Network": ["network", "internet"],
+    "Email": ["email", "mail"],
+    "InstantMessaging": ["chat", "messenger", "messaging"],
+    "Chat": ["chat", "messenger", "messaging"],
+    "VideoConference": ["call", "meeting", "video"],
+    "FileTransfer": ["download", "torrent", "transfer"],
+    "P2P": ["torrent", "download"],
+    "TerminalEmulator": ["terminal", "console", "shell"],
+    "TextEditor": ["editor", "text"],
+    "IDE": ["ide", "editor", "code", "dev"],
+    "Development": ["dev", "development", "code", "programming"],
+    "FileManager": ["files", "file manager", "explorer"],
+    "FileTools": ["files"],
+    "Audio": ["music", "audio", "sound"],
+    "Music": ["music", "audio"],
+    "Video": ["video", "movie", "media"],
+    "Player": ["player", "media"],
+    "AudioVideo": ["media", "multimedia"],
+    "Graphics": ["graphics", "image", "photo", "art"],
+    "Photography": ["photo", "camera"],
+    "RasterGraphics": ["image", "photo"],
+    "VectorGraphics": ["vector", "svg", "image"],
+    "Office": ["office", "document"],
+    "WordProcessor": ["word", "document", "writer"],
+    "Spreadsheet": ["spreadsheet", "sheet", "excel"],
+    "Presentation": ["slides", "presentation"],
+    "Viewer": ["viewer", "pdf", "reader"],
+    "Game": ["game", "games", "gaming"],
+    "Settings": ["settings", "preferences", "config"],
+    "System": ["system"],
+    "Monitor": ["monitor", "task manager", "resources"],
+    "Utility": ["utility", "tool", "tools"],
+    "Calculator": ["calculator", "calc"],
+    "Science": ["science"],
+    "Education": ["education", "learn"]
+  })
+
+  // Everything searchable about an app, lowercased, for type-based matching:
+  // generic name ("Web Browser"), keywords, and categories + their aliases.
+  function typeHaystack(app) {
+    var parts = []
+    if (app.genericName) parts.push(app.genericName)
+    if (app.keywords) {
+      for (var i = 0; i < app.keywords.length; ++i)
+        parts.push(app.keywords[i])
+    }
+    if (app.categories) {
+      for (var j = 0; j < app.categories.length; ++j) {
+        var c = app.categories[j]
+        parts.push(c)
+        var al = root.categoryAliases[c]
+        if (al) parts = parts.concat(al)
+      }
+    }
+    return parts.join(" | ").toLowerCase()
+  }
+
+  // Label shown next to each app. Uses the app's own GenericName when it
+  // defines one, otherwise falls back to its most specific category.
+  // Ordered specific -> generic so "WebBrowser" wins over "Network".
+  readonly property var categoryLabels: [
+    ["WebBrowser", "Web Browser"], ["Email", "Email Client"],
+    ["InstantMessaging", "Messenger"], ["Chat", "Messenger"],
+    ["VideoConference", "Video Call"], ["P2P", "Torrent Client"],
+    ["FileTransfer", "File Transfer"], ["TerminalEmulator", "Terminal"],
+    ["TextEditor", "Text Editor"], ["IDE", "Code Editor"],
+    ["FileManager", "File Manager"], ["Calculator", "Calculator"],
+    ["Monitor", "System Monitor"], ["WordProcessor", "Word Processor"],
+    ["Spreadsheet", "Spreadsheet"], ["Presentation", "Presentation"],
+    ["Office", "Office"], ["Music", "Music Player"], ["Player", "Media Player"],
+    ["Video", "Video"], ["Audio", "Audio"], ["AudioVideo", "Multimedia"],
+    ["RasterGraphics", "Image Editor"], ["VectorGraphics", "Vector Graphics"],
+    ["Photography", "Photography"], ["Viewer", "Viewer"], ["Graphics", "Graphics"],
+    ["Game", "Game"], ["Development", "Development"], ["Settings", "Settings"],
+    ["System", "System"], ["Network", "Network"], ["Utility", "Utility"],
+    ["Science", "Science"], ["Education", "Education"]
+  ]
+
+  function typeLabel(app) {
+    if (app.genericName && app.genericName.length > 0)
+      return app.genericName
+    if (!app.categories) return ""
+    for (var i = 0; i < root.categoryLabels.length; ++i) {
+      if (app.categories.indexOf(root.categoryLabels[i][0]) !== -1)
+        return root.categoryLabels[i][1]
+    }
+    return ""
+  }
+
+  // 3 = name starts with query, 2 = name contains it, 1 = matches app type, 0 = no match
+  function matchScore(app, q) {
+    var name = app.name.toLowerCase()
+    if (name.startsWith(q)) return 3
+    if (name.includes(q)) return 2
+    if (root.typeHaystack(app).includes(q)) return 1
+    return 0
+  }
+
+  function searchApps(q) {
+    q = q.trim().toLowerCase()
+    var scored = []
+    for (var i = 0; i < apps.length; ++i) {
+      var sc = root.matchScore(apps[i], q)
+      if (sc > 0) scored.push({ app: apps[i], score: sc })
+    }
+    scored.sort(function(a, b) {
+      if (a.score !== b.score) return b.score - a.score
+      return root.launchCount(b.app.id) - root.launchCount(a.app.id)
+    })
+    return scored.map(x => x.app)
+  }
+
   property var recentApps: apps
       .filter(a => root.launchCount(a.id) >= root.recentThreshold)
       .sort((a, b) => root.launchCount(b.id) - root.launchCount(a.id))
@@ -96,9 +212,7 @@ Item {
 
   property var displayApps: {
     if (query.length > 0) {
-      var filtered = apps.filter(a =>
-        a.name.toLowerCase().includes(query.toLowerCase()))
-      return root.rankedApps(filtered)
+      return root.searchApps(query)
     }
 
     var ranked = root.rankedApps(apps)
@@ -286,6 +400,19 @@ Item {
             font {
               family: "SF Pro Display"
               pixelSize: 14
+            }
+          }
+
+          Text {
+            text: root.typeLabel(entryDelegate.modelData)
+            visible: text.length > 0
+            color: "#7d8087"
+            elide: Text.ElideRight
+            Layout.maximumWidth: 150
+            horizontalAlignment: Text.AlignRight
+            font {
+              family: "SF Pro Display"
+              pixelSize: 12
             }
           }
         }
