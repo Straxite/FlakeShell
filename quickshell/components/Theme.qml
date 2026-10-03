@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Effects
 import Quickshell
+import Quickshell.Io
 
 // Theme filmstrip that lives INSIDE the pill (same layout as WallpaperPicker).
 // Focused card is big and bright, neighbours shrink/dim/desaturate as they slide away.
@@ -18,6 +19,9 @@ Item {
   // path into stateFile, and WallpaperPicker reads it when it opens.
   readonly property string wallBase: Quickshell.env("HOME") + "/.config/backgrounds/"
   readonly property string stateFile: Quickshell.env("HOME") + "/.cache/quickshell-wallpaper-dir"
+
+  // Remembers which theme is active (stores the theme's name). Survives restarts.
+  readonly property string themeStateFile: Quickshell.env("HOME") + "/.cache/quickshell-theme-selected"
 
   // To add a theme: add ONE entry.
   //   name   = shown on the card
@@ -52,6 +56,30 @@ Item {
   readonly property int count: displayThemes.length
   property int focusIndex: 0
   property real pos: 0
+  property string activeTheme: ""   // name of the currently applied theme ("" = unknown yet)
+
+  // jump the strip to the active theme
+  function restoreSelection() {
+    if (root.activeTheme === "" || root.searchQuery !== "") return
+    const i = root.displayThemes.findIndex(t => t.name === root.activeTheme)
+    if (i >= 0) {
+      root.focusIndex = i
+      root.pos = i
+    }
+  }
+
+  // load the saved theme when the strip opens
+  Process {
+    id: themeReader
+    running: true
+    command: ["sh", "-c", 'cat -- "$1" 2>/dev/null || true', "sh", root.themeStateFile]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        root.activeTheme = text.trim()
+        root.restoreSelection()
+      }
+    }
+  }
 
   function updateSearch() {
     root.focusIndex = 0
@@ -89,6 +117,12 @@ Item {
         'mkdir -p "$(dirname "$1")" && printf "%s\\n" "$2" > "$1"',
         "sh", root.stateFile, dir])
     }
+    // remember this theme as the active one
+    root.activeTheme = theme.name
+    Quickshell.execDetached(["sh", "-c",
+      'mkdir -p "$(dirname "$1")" && printf "%s\\n" "$2" > "$1"',
+      "sh", root.themeStateFile, theme.name])
+
     // run through bash; stdout+stderr go to /tmp/theme-menu.log so failures aren't silent
     Quickshell.execDetached(["bash", "-c",
       'echo "--- $(date) $1" >> /tmp/theme-menu.log; bash "$1" >> /tmp/theme-menu.log 2>&1; echo "exit: $?" >> /tmp/theme-menu.log',
@@ -144,7 +178,7 @@ Item {
     anchors.top: parent.top
     anchors.leftMargin: 16
     anchors.topMargin: 4
-    text: "Theme"
+    text: root.activeTheme !== "" ? "Theme  •  " + root.activeTheme : "Theme"
     color: "#eeffffff"
     font.pixelSize: 13
     font.weight: Font.Medium
