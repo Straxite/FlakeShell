@@ -3,15 +3,18 @@ import QtQuick
 FocusScope {
     id: root
 
+    // size helper: every number below is a design size, multiplied by Style.panelScale
+    function px(n) { return Math.round(n * Style.panelScale) }
+
     property string pendingAction: ""
     readonly property var actions: [{
-        "key": "suspend",
-        "icon": "󰤄",
-        "title": "Suspend"
-    }, {
         "key": "lock",
         "icon": "󰌾",
         "title": "Lock"
+    }, {
+        "key": "suspend",
+        "icon": "󰤄",
+        "title": "Suspend"
     }, {
         "key": "logout",
         "icon": "󰍃",
@@ -49,7 +52,7 @@ FocusScope {
         focusAction(0);
     }
 
-    implicitWidth: 352
+    implicitWidth: root.px(352)
     implicitHeight: content.implicitHeight
     Keys.onEscapePressed: ShellState.close()
 
@@ -64,13 +67,11 @@ FocusScope {
         id: content
 
         width: parent.width
-        spacing: 8
-
+        spacing: root.px(8)
         Row {
             width: parent.width
-            height: 56
-            spacing: 8
-
+            height: root.px(56)
+            spacing: root.px(8)
             Repeater {
                 id: actionRepeater
 
@@ -83,7 +84,7 @@ FocusScope {
                     required property var modelData
                     readonly property bool highlighted: activeFocus || pointer.containsMouse
 
-                    width: 64
+                    width: root.px(64)
                     height: parent.height
                     activeFocusOnTab: true
                     Keys.onReturnPressed: root.activate(modelData.key)
@@ -114,13 +115,12 @@ FocusScope {
 
                     Column {
                         anchors.centerIn: parent
-                        spacing: 4
-
+                        spacing: root.px(4)
                         ShellText {
                             anchors.horizontalCenter: parent.horizontalCenter
                             text: root.pendingAction === modelData.key ? "?" : modelData.icon
                             color: root.pendingAction === modelData.key || actionButton.highlighted ? Style.bgDim : Style.muted
-                            font.pixelSize: 16
+                            font.pixelSize: root.px(16)
                             font.weight: Font.Bold
                         }
 
@@ -128,7 +128,7 @@ FocusScope {
                             anchors.horizontalCenter: parent.horizontalCenter
                             text: root.pendingAction === modelData.key ? "Confirm" : modelData.title
                             color: root.pendingAction === modelData.key || actionButton.highlighted ? Style.bgDim : Style.muted
-                            font.pixelSize: 9
+                            font.pixelSize: root.px(9)
                             font.weight: Font.Black
                         }
 

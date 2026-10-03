@@ -4,6 +4,9 @@ import Quickshell.Services.Pipewire
 FocusScope {
     id: root
 
+    // size helper: every number below is a design size, multiplied by Style.panelScale
+    function px(n) { return Math.round(n * Style.panelScale) }
+
     property string mode: "region"
     property bool recordingMode: false
     readonly property var source: Pipewire.defaultAudioSource
@@ -48,7 +51,7 @@ FocusScope {
         }
     }
 
-    implicitWidth: 367
+    implicitWidth: root.px(367)
     implicitHeight: content.implicitHeight
     Keys.onEscapePressed: ShellState.close()
 
@@ -79,27 +82,24 @@ FocusScope {
         id: content
 
         width: parent.width
-        spacing: 9
-
+        spacing: root.px(9)
         Row {
             width: parent.width
-            height: 30
-
+            height: root.px(30)
             Column {
                 anchors.verticalCenter: parent.verticalCenter
                 width: parent.width - captureKind.width
-                spacing: 0
-
+                spacing: root.px(0)
                 ShellText {
                     text: "Capture"
-                    font.pixelSize: 14
+                    font.pixelSize: root.px(14)
                     font.weight: Font.Bold
                 }
 
                 ShellText {
                     text: root.recordingMode ? (Backend.recording ? "Recording now" : "Screen recording") : "Screen capture"
                     color: root.recordingMode && Backend.recording ? Style.red : Style.mutedDark
-                    font.pixelSize: 8
+                    font.pixelSize: root.px(8)
                     font.weight: Font.DemiBold
                 }
             }
@@ -108,8 +108,7 @@ FocusScope {
                 id: captureKind
 
                 height: parent.height
-                spacing: 2
-
+                spacing: root.px(2)
                 Repeater {
                     model: [{
                         "title": "Still",
@@ -127,7 +126,7 @@ FocusScope {
                         required property var modelData
                         readonly property bool selected: root.recordingMode === modelData.recording
 
-                        width: 70
+                        width: root.px(70)
                         height: parent.height
                         activeFocusOnTab: true
                         Keys.onReturnPressed: root.recordingMode = modelData.recording
@@ -150,18 +149,17 @@ FocusScope {
 
                         Row {
                             anchors.centerIn: parent
-                            spacing: 5
-
+                            spacing: root.px(5)
                             ShellText {
                                 text: kindButton.modelData.icon
                                 color: kindButton.selected ? (kindButton.modelData.recording ? Style.red : Style.primary) : Style.mutedDark
-                                font.pixelSize: 11
+                                font.pixelSize: root.px(11)
                             }
 
                             ShellText {
                                 text: kindButton.modelData.title
                                 color: kindButton.selected ? Style.foreground : Style.mutedDark
-                                font.pixelSize: 9
+                                font.pixelSize: root.px(9)
                                 font.weight: kindButton.selected ? Font.Bold : Font.Medium
                             }
                         }
@@ -181,11 +179,10 @@ FocusScope {
 
         Row {
             width: parent.width
-            height: 118
-            spacing: 8
-
+            height: root.px(118)
+            spacing: root.px(8)
             Rectangle {
-                width: 105
+                width: root.px(105)
                 height: parent.height
                 radius: Style.radius
                 color: Style.bg0
@@ -194,8 +191,8 @@ FocusScope {
 
                 Column {
                     anchors.fill: parent
-                    anchors.margins: 5
-                    spacing: 2
+                    anchors.margins: root.px(5)
+                    spacing: root.px(2)
                     visible: !root.recordingMode
 
                     Repeater {
@@ -223,7 +220,7 @@ FocusScope {
                             readonly property bool selected: root.mode === modelData.key
 
                             width: parent.width
-                            height: 34
+                            height: root.px(34)
                             activeFocusOnTab: true
                             Keys.onReturnPressed: root.focusScreenshotMode(index)
                             Keys.onEnterPressed: root.focusScreenshotMode(index)
@@ -247,22 +244,21 @@ FocusScope {
 
                             Row {
                                 anchors.left: parent.left
-                                anchors.leftMargin: 9
+                                anchors.leftMargin: root.px(9)
                                 anchors.verticalCenter: parent.verticalCenter
-                                spacing: 8
-
+                                spacing: root.px(8)
                                 ShellText {
-                                    width: 15
+                                    width: root.px(15)
                                     text: targetButton.modelData.icon
                                     color: targetButton.selected ? root.accent : Style.mutedDark
-                                    font.pixelSize: 12
+                                    font.pixelSize: root.px(12)
                                     horizontalAlignment: Text.AlignHCenter
                                 }
 
                                 ShellText {
                                     text: targetButton.modelData.title
                                     color: targetButton.selected ? Style.foreground : Style.muted
-                                    font.pixelSize: 9
+                                    font.pixelSize: root.px(9)
                                     font.weight: targetButton.selected ? Font.DemiBold : Font.Medium
                                 }
                             }
@@ -281,8 +277,8 @@ FocusScope {
 
                 Column {
                     anchors.fill: parent
-                    anchors.margins: 5
-                    spacing: 2
+                    anchors.margins: root.px(5)
+                    spacing: root.px(2)
                     visible: root.recordingMode
 
                     Repeater {
@@ -307,7 +303,7 @@ FocusScope {
                             readonly property bool enabledState: !microphone || (root.source && root.source.audio && !root.source.audio.muted)
 
                             width: parent.width
-                            height: 51
+                            height: root.px(51)
                             activeFocusOnTab: true
                             Keys.onReturnPressed: activate()
                             Keys.onEnterPressed: activate()
@@ -330,20 +326,19 @@ FocusScope {
 
                             Column {
                                 anchors.centerIn: parent
-                                spacing: 2
-
+                                spacing: root.px(2)
                                 ShellText {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     text: recordControl.modelData.icon
                                     color: recordControl.enabledState ? (recordControl.microphone ? Style.primary : Style.red) : Style.mutedDark
-                                    font.pixelSize: 14
+                                    font.pixelSize: root.px(14)
                                 }
 
                                 ShellText {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     text: recordControl.modelData.title
                                     color: recordControl.enabledState ? Style.foreground : Style.mutedDark
-                                    font.pixelSize: 8
+                                    font.pixelSize: root.px(8)
                                     font.weight: Font.DemiBold
                                 }
                             }
@@ -364,7 +359,7 @@ FocusScope {
             Rectangle {
                 id: viewfinder
 
-                width: parent.width - 113
+                width: parent.width - root.px(113)
                 height: parent.height
                 radius: Style.radius
                 color: Style.bg0
@@ -375,7 +370,7 @@ FocusScope {
                 Rectangle {
                     anchors.fill: parent
                     color: "transparent"
-                    border.width: 9
+                    border.width: root.px(9)
                     border.color: Qt.rgba(0.12, 0.14, 0.15, 0.18)
                 }
 
@@ -383,33 +378,32 @@ FocusScope {
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.top: parent.top
-                    anchors.margins: 10
-
+                    anchors.margins: root.px(10)
                     ShellText {
                         width: parent.width / 2
                         text: root.recordingMode ? "Display" : root.currentMode.shortTitle
                         color: root.accent
-                        font.pixelSize: 8
+                        font.pixelSize: root.px(8)
                         font.weight: Font.DemiBold
                     }
 
                     Row {
                         width: parent.width / 2
                         layoutDirection: Qt.RightToLeft
-                        spacing: 5
+                        spacing: root.px(5)
                         visible: root.recordingMode && Backend.recording
 
                         ShellText {
                             text: "Recording"
                             color: Style.red
-                            font.pixelSize: 8
+                            font.pixelSize: root.px(8)
                             font.weight: Font.DemiBold
                         }
 
                         Rectangle {
                             anchors.verticalCenter: parent.verticalCenter
-                            width: 5
-                            height: 5
+                            width: root.px(5)
+                            height: root.px(5)
                             radius: 3
                             color: Style.red
                         }
@@ -420,9 +414,9 @@ FocusScope {
                     id: displayFrame
 
                     anchors.horizontalCenter: parent.horizontalCenter
-                    y: 31
-                    width: parent.width - 46
-                    height: 56
+                    y: root.px(31)
+                    width: parent.width - root.px(46)
+                    height: root.px(56)
                     radius: 3
                     color: "transparent"
                     border.width: 1
@@ -430,8 +424,8 @@ FocusScope {
 
                     Rectangle {
                         anchors.centerIn: parent
-                        width: root.recordingMode || root.mode === "full" ? parent.width : (root.mode === "window" ? 126 : 111)
-                        height: root.recordingMode || root.mode === "full" ? parent.height : (root.mode === "window" ? 48 : 38)
+                        width: root.recordingMode || root.mode === "full" ? parent.width : (root.mode === "window" ? root.px(126) : root.px(111))
+                        height: root.recordingMode || root.mode === "full" ? parent.height : (root.mode === "window" ? root.px(48) : root.px(38))
                         radius: root.mode === "window" && !root.recordingMode ? 4 : 1
                         color: root.recordingMode ? Qt.rgba(0.90, 0.49, 0.50, 0.08) : (root.mode === "window" ? Style.primaryContainer : Qt.rgba(0.65, 0.75, 0.50, 0.08))
                         border.width: 1
@@ -448,16 +442,16 @@ FocusScope {
                         Row {
                             anchors.left: parent.left
                             anchors.top: parent.top
-                            anchors.margins: 5
-                            spacing: 3
+                            anchors.margins: root.px(5)
+                            spacing: root.px(3)
                             visible: root.mode === "window" && !root.recordingMode
 
                             Repeater {
                                 model: 3
 
                                 Rectangle {
-                                    width: 3
-                                    height: 3
+                                    width: root.px(3)
+                                    height: root.px(3)
                                     radius: 2
                                     color: index === 0 ? Style.red : Style.mutedDark
                                 }
@@ -466,16 +460,16 @@ FocusScope {
 
                         Rectangle {
                             anchors.centerIn: parent
-                            width: 18
-                            height: 18
+                            width: root.px(18)
+                            height: root.px(18)
                             radius: 9
                             color: Style.red
                             visible: root.recordingMode
 
                             Rectangle {
                                 anchors.centerIn: parent
-                                width: 6
-                                height: 6
+                                width: root.px(6)
+                                height: root.px(6)
                                 radius: Backend.recording ? 1 : 3
                                 color: Style.bgDim
                             }
@@ -487,10 +481,10 @@ FocusScope {
                             Rectangle {
                                 required property int index
 
-                                x: index % 2 === 0 ? -2 : parent.width - 2
-                                y: index < 2 ? -2 : parent.height - 2
-                                width: 4
-                                height: 4
+                                x: index % 2 === 0 ? -width / 2 : parent.width - width / 2
+                                y: index < 2 ? -height / 2 : parent.height - height / 2
+                                width: root.px(4)
+                                height: root.px(4)
                                 radius: 1
                                 color: root.accent
                             }
@@ -502,15 +496,14 @@ FocusScope {
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.bottom: parent.bottom
-                    anchors.leftMargin: 11
-                    anchors.rightMargin: 11
-                    anchors.bottomMargin: 8
-
+                    anchors.leftMargin: root.px(11)
+                    anchors.rightMargin: root.px(11)
+                    anchors.bottomMargin: root.px(8)
                     ShellText {
                         width: parent.width
                         text: root.recordingMode ? (root.source ? (root.source.description || "Default microphone") : "No microphone") : root.currentMode.description
                         color: Style.muted
-                        font.pixelSize: 8
+                        font.pixelSize: root.px(8)
                         elide: Text.ElideRight
                     }
                 }
@@ -530,7 +523,7 @@ FocusScope {
             }
 
             width: parent.width
-            height: 42
+            height: root.px(42)
             activeFocusOnTab: true
             Keys.onReturnPressed: activate()
             Keys.onEnterPressed: activate()
@@ -552,41 +545,39 @@ FocusScope {
 
             Row {
                 anchors.fill: parent
-                anchors.leftMargin: 14
-                anchors.rightMargin: 10
-                spacing: 10
-
+                anchors.leftMargin: root.px(14)
+                anchors.rightMargin: root.px(10)
+                spacing: root.px(10)
                 ShellText {
                     anchors.verticalCenter: parent.verticalCenter
-                    width: 20
+                    width: root.px(20)
                     text: root.recordingMode ? (Backend.recording ? "󰓛" : "󰑊") : "󰄀"
                     color: root.accent
-                    font.pixelSize: 15
+                    font.pixelSize: root.px(15)
                 }
 
                 Column {
                     anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width - 70
-                    spacing: 0
-
+                    width: parent.width - root.px(70)
+                    spacing: root.px(0)
                     ShellText {
                         text: root.recordingMode ? (Backend.recording ? "Stop recording" : "Start recording") : "Capture " + root.currentMode.title.toLowerCase()
                         color: Style.foreground
-                        font.pixelSize: 10
+                        font.pixelSize: root.px(10)
                         font.weight: Font.Bold
                     }
 
                     ShellText {
                         text: root.recordingMode ? "Full display · WebM" : "Saved to Pictures"
                         color: Style.mutedDark
-                        font.pixelSize: 7
+                        font.pixelSize: root.px(7)
                     }
                 }
 
                 Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
-                    width: 30
-                    height: 22
+                    width: root.px(30)
+                    height: root.px(22)
                     radius: Style.radiusSmall
                     color: Style.bg1
                     border.width: 1
@@ -596,7 +587,7 @@ FocusScope {
                         anchors.centerIn: parent
                         text: "↵"
                         color: Style.muted
-                        font.pixelSize: 12
+                        font.pixelSize: root.px(12)
                         font.weight: Font.Bold
                     }
                 }
@@ -618,7 +609,7 @@ FocusScope {
             text: Backend.lastError || Backend.lastCapture
             color: Backend.lastError ? Style.red : Style.muted
             elide: Text.ElideMiddle
-            font.pixelSize: 8
+            font.pixelSize: root.px(8)
         }
     }
 }

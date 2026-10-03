@@ -8,6 +8,10 @@ Singleton {
   // font: needs a Nerd Font so the icon glyphs show up. Change to the one you use.
   readonly property string fontFamily: "JetBrainsMono Nerd Font"
 
+  // Capture + Power panels are drawn at this multiple of their design size (1.0 = original small).
+  // Bump it up/down if they still feel too small/big on your screen.
+  readonly property real panelScale: 1.4
+
   // shapes + speeds
   readonly property int radius: 12
   readonly property int radiusSmall: 8
