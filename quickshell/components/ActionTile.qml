@@ -1,110 +1,139 @@
 import QtQuick
+import qs
 
-// Quick-settings tile: click = toggle, the little arrow on the right = open its detail list.
 FocusScope {
-  id: root
+    id: root
 
-  property string icon: ""
-  property string title: ""
-  property string subtitle: ""
-  property var active: false          // var: callers pass things like `source && source.audio`
-  property bool expandable: false
-  property bool expanded: false
-  property string detailAccessibleName: ""
-  signal clicked()
-  signal detailClicked()
+    property string icon: ""
+    property string title: ""
+    property string subtitle: ""
+    property bool active: false
+    property bool expandable: false
+    property bool expanded: false
+    property string detailAccessibleName: "Show " + title + " options"
 
-  activeFocusOnTab: true
-  Keys.onReturnPressed: root.clicked()
-  Keys.onEnterPressed: root.clicked()
-  Keys.onSpacePressed: root.clicked()
-  Accessible.role: Accessible.Button
-  Accessible.name: title
+    signal clicked()
+    signal detailClicked()
 
-  Rectangle {
-    anchors.fill: parent
-    radius: Style.radius
-    color: root.active ? Style.primaryContainer : (tilePointer.containsMouse ? Style.bg1 : Style.bg0)
-    border.width: (root.activeFocus || root.expanded) ? 1 : 0
-    border.color: Style.primary
-
-    Behavior on color { ColorAnimation { duration: Style.animationFast } }
-  }
-
-  MouseArea {
-    id: tilePointer
-    anchors.fill: parent
-    hoverEnabled: true
-    cursorShape: Qt.PointingHandCursor
-    onClicked: root.clicked()
-  }
-
-  Row {
-    anchors.left: parent.left
-    anchors.leftMargin: 12
-    anchors.right: chevron.visible ? chevron.left : parent.right
-    anchors.rightMargin: 6
-    anchors.verticalCenter: parent.verticalCenter
-    spacing: 10
-
-    ShellText {
-      anchors.verticalCenter: parent.verticalCenter
-      width: 20
-      text: root.icon
-      color: root.active ? Style.primary : Style.muted
-      font.pixelSize: 16
-      horizontalAlignment: Text.AlignHCenter
-    }
-
-    Column {
-      anchors.verticalCenter: parent.verticalCenter
-      width: parent.width - 30
-      spacing: 1
-
-      ShellText {
-        width: parent.width
-        text: root.title
-        elide: Text.ElideRight
-        font.pixelSize: 10
-        font.weight: Font.Bold
-      }
-
-      ShellText {
-        width: parent.width
-        text: root.subtitle
-        color: Style.muted
-        elide: Text.ElideRight
-        font.pixelSize: 9
-      }
-    }
-  }
-
-  Item {
-    id: chevron
-
-    anchors.right: parent.right
-    anchors.top: parent.top
-    anchors.bottom: parent.bottom
-    width: 26
-    visible: root.expandable
+    implicitHeight: 58
+    activeFocusOnTab: true
+    Keys.onReturnPressed: root.clicked()
+    Keys.onEnterPressed: root.clicked()
+    Keys.onSpacePressed: root.clicked()
     Accessible.role: Accessible.Button
-    Accessible.name: root.detailAccessibleName
+    Accessible.name: title + (subtitle ? ", " + subtitle : "")
 
-    ShellText {
-      anchors.centerIn: parent
-      text: "›"
-      color: Style.muted
-      font.pixelSize: 16
-      rotation: root.expanded ? 90 : 0
+    Rectangle {
+        anchors.fill: parent
+        radius: Theme.radius
+        color: root.active ? Theme.primary : Theme.bg0
+        border.width: root.activeFocus || detailButton.activeFocus ? 2 : 0
+        border.color: Theme.primary
 
-      Behavior on rotation { NumberAnimation { duration: Style.animationFast } }
+        Behavior on color {
+            ColorAnimation {
+                duration: Theme.animationFast
+            }
+
+        }
+
+    }
+
+    Row {
+        anchors.left: parent.left
+        anchors.right: detailButton.visible ? detailButton.left : parent.right
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        anchors.margins: 9
+        spacing: 8
+
+        Rectangle {
+            anchors.verticalCenter: parent.verticalCenter
+            width: 30
+            height: 30
+            radius: 15
+            color: root.active ? Qt.rgba(0.12, 0.14, 0.12, 0.14) : Theme.bg1
+
+            ShellText {
+                anchors.centerIn: parent
+                text: root.icon
+                color: root.active ? Theme.bgDim : Theme.muted
+                font.pixelSize: 14
+                font.weight: Font.Bold
+            }
+
+        }
+
+        Column {
+            anchors.verticalCenter: parent.verticalCenter
+            width: parent.width - 38
+            spacing: 2
+
+            ShellText {
+                width: parent.width
+                text: root.title
+                color: root.active ? Theme.bgDim : Theme.foreground
+                elide: Text.ElideRight
+                font.pixelSize: 12
+                font.weight: Font.Bold
+            }
+
+            ShellText {
+                width: parent.width
+                text: root.subtitle
+                color: root.active ? Qt.rgba(0.12, 0.14, 0.12, 0.68) : Theme.muted
+                elide: Text.ElideRight
+                font.pixelSize: 9
+            }
+
+        }
     }
 
     MouseArea {
-      anchors.fill: parent
-      hoverEnabled: true
-      cursorShape: Qt.PointingHandCursor
-      onClicked: root.detailClicked()
+        anchors.left: parent.left
+        anchors.right: detailButton.visible ? detailButton.left : parent.right
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        cursorShape: Qt.PointingHandCursor
+        onClicked: root.clicked()
     }
-  }
+
+    FocusScope {
+        id: detailButton
+
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        width: root.expandable ? 31 : 0
+        visible: root.expandable
+        activeFocusOnTab: visible
+        Keys.onReturnPressed: root.detailClicked()
+        Keys.onEnterPressed: root.detailClicked()
+        Keys.onSpacePressed: root.detailClicked()
+        Accessible.role: Accessible.Button
+        Accessible.name: root.detailAccessibleName
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            width: 1
+            height: parent.height - 18
+            color: root.active ? Qt.rgba(0.12, 0.14, 0.12, 0.18) : Theme.bg2
+        }
+
+        ShellText {
+            anchors.centerIn: parent
+            text: root.expanded ? "󰅃" : "󰅀"
+            color: root.active ? Qt.rgba(0.12, 0.14, 0.12, 0.62) : Theme.mutedDark
+            font.pixelSize: 11
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.detailClicked()
+        }
+
+    }
+
 }

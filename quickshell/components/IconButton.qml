@@ -1,45 +1,73 @@
 import QtQuick
+import qs
 
-// Square-ish button with a glyph. Anything you put inside it (e.g. an IconImage) is drawn on top.
 FocusScope {
-  id: root
+    id: root
 
-  property string icon: ""
-  property string accessibleName: ""
-  property color foregroundColor: Style.foreground
-  property color backgroundColor: "transparent"
-  signal clicked()
+    property string icon: ""
+    property string accessibleName: ""
+    property color backgroundColor: Theme.bg0
+    property color foregroundColor: Theme.foreground
+    property color hoverBackgroundColor: Theme.primaryContainer
+    property color hoverForegroundColor: Theme.foreground
+    readonly property bool hovered: pointer.containsMouse
 
-  activeFocusOnTab: true
-  opacity: enabled ? 1 : 0.4
-  Keys.onReturnPressed: root.clicked()
-  Keys.onEnterPressed: root.clicked()
-  Keys.onSpacePressed: root.clicked()
-  Accessible.role: Accessible.Button
-  Accessible.name: accessibleName
+    signal clicked()
 
-  Rectangle {
-    anchors.fill: parent
-    radius: Style.radiusSmall
-    color: pointer.containsMouse ? (root.backgroundColor.a > 0 ? Qt.lighter(root.backgroundColor, 1.15) : Style.bg1) : root.backgroundColor
-    border.width: root.activeFocus ? 1 : 0
-    border.color: Style.primary
+    implicitWidth: 32
+    implicitHeight: 32
+    activeFocusOnTab: true
+    Keys.onReturnPressed: root.clicked()
+    Keys.onEnterPressed: root.clicked()
+    Keys.onSpacePressed: root.clicked()
+    Accessible.role: Accessible.Button
+    Accessible.name: accessibleName
+    scale: hovered ? 1.06 : 1
 
-    Behavior on color { ColorAnimation { duration: Style.animationFast } }
-  }
+    Behavior on scale {
+        NumberAnimation {
+            duration: Theme.animationFast
+            easing.type: Easing.OutCubic
+        }
+    }
 
-  ShellText {
-    anchors.centerIn: parent
-    text: root.icon
-    color: root.foregroundColor
-    font.pixelSize: Math.round(Math.min(root.width, root.height) * 0.5)
-  }
+    Rectangle {
+        anchors.fill: parent
+        radius: width / 2
+        color: root.activeFocus || root.hovered ? root.hoverBackgroundColor : root.backgroundColor
+        border.width: root.activeFocus ? 2 : 0
+        border.color: Theme.primary
 
-  MouseArea {
-    id: pointer
-    anchors.fill: parent
-    hoverEnabled: true
-    cursorShape: Qt.PointingHandCursor
-    onClicked: root.clicked()
-  }
+        Behavior on color {
+            ColorAnimation {
+                duration: Theme.animationFast
+            }
+
+        }
+
+    }
+
+    ShellText {
+        anchors.centerIn: parent
+        text: root.icon
+        color: root.hovered ? root.hoverForegroundColor : root.foregroundColor
+        font.pixelSize: 15
+        font.weight: Font.DemiBold
+
+        Behavior on color {
+            ColorAnimation {
+                duration: Theme.animationFast
+            }
+        }
+    }
+
+    MouseArea {
+        id: pointer
+
+        anchors.fill: parent
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        onClicked: root.clicked()
+    }
+
 }

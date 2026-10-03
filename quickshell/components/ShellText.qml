@@ -1,8 +1,9 @@
 import QtQuick
+import qs
 
-// Plain Text with the shell font + default color.
 Text {
-  color: Style.foreground
-  font.family: Style.fontFamily
-  font.pixelSize: 11
+    color: Theme.foreground
+    font.family: Theme.fontFamily
+    font.pixelSize: 12
+    renderType: Text.NativeRendering
 }

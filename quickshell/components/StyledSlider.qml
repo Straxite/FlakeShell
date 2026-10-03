@@ -1,78 +1,145 @@
 import QtQuick
+import qs
 
-// Horizontal slider. `value` is 0..1 and comes from outside; dragging only emits moved(value),
-// the owner decides what to do with it (set volume, brightness, ...).
 FocusScope {
-  id: root
+    id: root
 
-  property bool filled: true
-  property string icon: ""
-  property string accessibleName: ""
-  property real value: 0
-  property string valueText: ""
-  signal moved(real value)
+    property real value: 0
+    property bool filled: false
+    property string icon: ""
+    property string accessibleName: ""
+    property string valueText: ""
 
-  // while dragging show the finger position, otherwise the real value
-  property real dragValue: 0
-  readonly property real shown: dragArea.pressed ? dragValue : Math.max(0, Math.min(1, value))
+    signal moved(real value)
 
-  implicitHeight: 36
-  activeFocusOnTab: true
-  Accessible.role: Accessible.Slider
-  Accessible.name: accessibleName
-  Keys.onLeftPressed: root.moved(Math.max(0, root.value - 0.05))
-  Keys.onRightPressed: root.moved(Math.min(1, root.value + 0.05))
+    function setFromX(x) {
+        const trackX = filled ? filledTrack.x : rail.x;
+        const trackWidth = filled ? filledTrack.width : rail.width;
+        const rawValue = (x - trackX) / trackWidth;
+        moved(Math.max(0, Math.min(1, rawValue)));
+    }
 
-  Rectangle {
-    id: track
-    anchors.fill: parent
-    radius: Style.radius
-    color: Style.bg1
-    border.width: root.activeFocus ? 1 : 0
-    border.color: Style.primary
+    implicitHeight: 40
+    activeFocusOnTab: true
+    Keys.onLeftPressed: {
+        moved(Math.max(0, value - 0.05));
+    }
+    Keys.onRightPressed: {
+        moved(Math.min(1, value + 0.05));
+    }
+    Accessible.role: Accessible.Slider
+    Accessible.name: accessibleName
 
-    // the filled part: never narrower than the height, so the icon always sits on a round end
     Rectangle {
-      width: track.height + (track.width - track.height) * root.shown
-      height: track.height
-      radius: track.radius
-      color: Style.primary
-      visible: root.filled
+        anchors.fill: parent
+        radius: height / 2
+        color: root.filled ? Theme.bg2 : Theme.bg0
+        border.width: root.filled ? (root.activeFocus ? 2 : 0) : 1
+        border.color: root.activeFocus ? Theme.primary : Theme.bg2
+
+        Behavior on border.color {
+            ColorAnimation { duration: Theme.animationFast }
+        }
     }
 
     ShellText {
-      anchors.left: parent.left
-      anchors.leftMargin: (track.height - width) / 2
-      anchors.verticalCenter: parent.verticalCenter
-      text: root.icon
-      color: Style.bgDim
-      font.pixelSize: 14
+        z: 1
+        anchors.left: parent.left
+        anchors.leftMargin: 14
+        anchors.verticalCenter: parent.verticalCenter
+        text: root.icon
+        color: root.filled ? Theme.bgDim : (root.enabled ? Theme.muted : Theme.mutedDark)
+        font.pixelSize: 14
+        font.weight: Font.Bold
+    }
+
+    Rectangle {
+        id: rail
+
+        anchors.left: parent.left
+        anchors.leftMargin: 46
+        anchors.right: parent.right
+        anchors.rightMargin: 15
+        anchors.verticalCenter: parent.verticalCenter
+        height: 4
+        radius: height / 2
+        color: Theme.bg3
+        visible: !root.filled
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: parent.width * Math.max(0, Math.min(1, root.value))
+            radius: height / 2
+            color: Theme.primary
+        }
+
+    }
+
+    Rectangle {
+        x: rail.x + rail.width * Math.max(0, Math.min(1, root.value)) - width / 2
+        anchors.verticalCenter: rail.verticalCenter
+        width: 14
+        height: 14
+        radius: width / 2
+        color: Theme.primary
+        border.width: 3
+        border.color: Theme.bg0
+        visible: !root.filled
+
+        Behavior on x {
+            enabled: !pointer.pressed
+            NumberAnimation {
+                duration: Theme.animationFast
+                easing.type: Easing.OutCubic
+            }
+        }
+    }
+
+    Item {
+        id: filledTrack
+
+        anchors.fill: parent
+        anchors.margins: 4
+        visible: root.filled
+
+        Rectangle {
+            id: filledBar
+
+            anchors.left: parent.left
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: Math.max(height, parent.width * Math.max(0, Math.min(1, root.value)))
+            radius: height / 2
+            color: Theme.primary
+        }
     }
 
     ShellText {
-      anchors.right: parent.right
-      anchors.rightMargin: 12
-      anchors.verticalCenter: parent.verticalCenter
-      visible: text.length > 0
-      text: root.valueText
-      color: root.shown > 0.88 ? Style.bgDim : Style.foreground
-      font.pixelSize: 10
-      font.weight: Font.DemiBold
-    }
-  }
+        id: valueLabel
 
-  MouseArea {
-    id: dragArea
-
-    function setFrom(x) {
-      const span = Math.max(1, root.width - root.height);
-      root.dragValue = Math.max(0, Math.min(1, (x - root.height / 2) / span));
-      root.moved(root.dragValue);
+        z: 1
+        anchors.right: parent.right
+        anchors.rightMargin: 14
+        anchors.verticalCenter: parent.verticalCenter
+        visible: root.valueText.length > 0
+        text: root.valueText
+        color: root.filled && filledTrack.x + filledBar.width >= x + width / 2 ? Theme.bgDim : Theme.foreground
+        font.pixelSize: 10
+        font.weight: Font.Bold
     }
 
-    anchors.fill: parent
-    cursorShape: Qt.PointingHandCursor
-    onPressed: (mouse) => setFrom(mouse.x)
-    onPositionChanged: (mouse) => { if (pressed) setFrom(mouse.x); }
-  }
+    MouseArea {
+        id: pointer
+
+        anchors.fill: parent
+        cursorShape: Qt.PointingHandCursor
+        onPressed: (mouse) => root.setFromX(mouse.x)
+        onPositionChanged: (mouse) => {
+            if (pressed)
+                root.setFromX(mouse.x);
+        }
+    }
+
 }
