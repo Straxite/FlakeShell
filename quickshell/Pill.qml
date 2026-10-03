@@ -343,7 +343,7 @@ PanelWindow {
         return root.pillHeight + 5
       if (root.showBrightness)
         return root.pillHeight + 5
-      return isHovered ? root.pillHeight * 4 : root.pillHeight   // hover expands, else idle
+      return isHovered ? root.pillHeight * 5 : root.pillHeight   // hover expands, else idle
     }
 
     // WIDTH: same idea, first match wins.
@@ -352,7 +352,7 @@ PanelWindow {
                 : (root.panelWanted && panelLoader.item) ? panelLoader.item.implicitWidth + 20   // panels size themselves
                 : root.launcherActive ? root.pillHeight * 16
                 : root.menuActive ? root.pillHeight * 16
-                : isHovered           ? root.pillHeight * 18
+                : isHovered           ? root.pillHeight * 12
                 : (root.showVolume || root.showBrightness) ? root.pillHeight * 12
                 : root.showWorkspaces           ? root.pillHeight * 4
                 :                       root.pillHeight * 3        // idle
@@ -559,6 +559,5 @@ PanelWindow {
     // The normal clock / date / battery, hidden whenever anything else is using the pill.
     Clock { visible: !root.anyModeOpen && !root.showWorkspaces && !root.showVolume && !root.showBrightness }
     Date { hovered: pill.isHovered; visible: !root.anyModeOpen && !root.showWorkspaces && !root.showVolume && !root.showBrightness }
-    Battery { visible: !root.anyModeOpen && !root.showWorkspaces && !root.showVolume && !root.showBrightness }
   }
 }

@@ -8,7 +8,7 @@ Rectangle {
 
   anchors.horizontalCenter: parent.horizontalCenter
   anchors.verticalCenter: parent.verticalCenter
-  anchors.verticalCenterOffset: pill.isHovered ? -10 : 0
+  anchors.verticalCenterOffset: pill.isHovered ? -30 : 0
   anchors.horizontalCenterOffset: pill.isHovered ? 0 : 0
 
   Behavior on anchors.verticalCenterOffset {
@@ -20,7 +20,7 @@ Rectangle {
       color: "#e8eaed"
 
       font {
-          family: "SF Pro Display Font"
+          family: "SF Pro Display RoundedFont"
           letterSpacing: -1
           pixelSize: pill.isHovered ? 30 : 18
           weight: 700
