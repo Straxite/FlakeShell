@@ -10,7 +10,8 @@
 //   5. the pill Rectangle: its size, shape, and everything drawn inside it
 //
 // Modes, in priority order for sizing:
-//   wallpaper strip > theme > launcher > menu > volume/brightness popup > hover > idle
+//   wallpaper strip > theme > panel (control/capture/clipboard/power) > launcher > menu
+//   > volume/brightness popup > hover > idle
 // ─────────────────────────────────────────────────────────────────────────────
 import Quickshell
 import QtQuick
@@ -40,11 +41,56 @@ PanelWindow {
   // THEME: the theme list. Flipped by `ipc call theme toggle`.
   property bool themeActive: false
 
+  // PANELS: control center / capture / clipboard / power. Which one is open lives in
+  // ShellState.panel ("" = none), because the panels themselves close it (Escape, action done).
+  //   panelWanted = what ShellState says right now (drives the pill SIZE, so it shrinks right away)
+  //   shownPanel  = the panel actually on screen (lags a moment so it can fade out / swap)
+  //   panelActive = a panel is on screen (hides the clock/OSDs, keeps keyboard focus)
+  readonly property bool panelWanted: ShellState.panel !== ""
+  property string shownPanel: ""
+  property bool panelFadeIn: false      // target for the panel's fade (true = visible)
+  readonly property bool panelActive: shownPanel !== ""
+
   // true while any big mode owns the pill (used to hide OSDs / idle content)
-  readonly property bool anyModeOpen: launcherActive || menuActive || wallpaperActive || themeActive
+  readonly property bool anyModeOpen: launcherActive || menuActive || wallpaperActive || themeActive || panelActive
+
+  // Switch off every non-panel mode (the IPC handlers below use this before opening a panel).
+  function closeBigModes() {
+    launcherActive = false
+    menuActive = false
+    wallpaperActive = false
+    themeActive = false
+  }
 
   // WORKSPACES: true for 1s after the focused workspace changes (see rootTimer below).
   property bool showWorkspaces: pill.rootTimer.running
+
+  // Open / close / swap a panel with a fade. Runs whenever ShellState.panel changes.
+  function syncPanel() {
+    const want = ShellState.panel
+    panelHideTimer.stop()
+    panelSwapTimer.stop()
+    if (want === "") {                      // closing: fade out, then unload
+      panelFadeIn = false
+      panelHideTimer.restart()
+    } else if (shownPanel === "" || shownPanel === want) {   // opening (or re-opening mid-fade)
+      shownPanel = want
+      panelFadeIn = true
+    } else {                                // switching panel: fade old out, swap, fade new in
+      panelFadeIn = false
+      panelSwapTimer.restart()
+    }
+  }
+  Connections {
+    target: ShellState
+    function onPanelChanged() { root.syncPanel() }
+  }
+  Timer { id: panelHideTimer; interval: 180; onTriggered: root.shownPanel = "" }
+  Timer {
+    id: panelSwapTimer
+    interval: 180
+    onTriggered: { root.shownPanel = ShellState.panel; root.panelFadeIn = true }
+  }
 
   // ───── VOLUME ─────
   // The pill shows the volume bar for 1.5s after any volume/mute change.
@@ -110,6 +156,7 @@ PanelWindow {
       brightnessTimer.restart()
     }
     brightness = pct
+    Backend.brightness = pct * 100   // the control panel's brightness slider reads this
     brightnessReady = true
   }
 
@@ -125,8 +172,8 @@ PanelWindow {
   color: "transparent"
   anchors { top: true; left: true; right: true }
 
-  // Window is tall enough for the biggest the pill can get; it is invisible anyway.
-  implicitHeight: pillHeight * 14
+  // Window is tall enough for the biggest the pill can get (the control panel); it is invisible anyway.
+  implicitHeight: pillHeight * 20
 
   WlrLayershell.layer: WlrLayer.Top
 
@@ -158,6 +205,12 @@ PanelWindow {
     onCleared: root.themeActive = false
   }
 
+  HyprlandFocusGrab {
+    windows: [ root ]
+    active: root.panelActive
+    onCleared: ShellState.close()
+  }
+
   // Reserve this much space at the top so windows don't open underneath the pill.
   exclusiveZone: pillHeight
 
@@ -168,6 +221,7 @@ PanelWindow {
     target: "launcher"
 
     function toggle(): void {
+      ShellState.close()
       root.wallpaperActive = false
       root.menuActive = false
       root.themeActive = false
@@ -178,6 +232,7 @@ PanelWindow {
     target: "menu"
 
     function toggle(): void {
+      ShellState.close()
       root.launcherActive = false
       root.wallpaperActive = false
       root.themeActive = false
@@ -188,6 +243,7 @@ PanelWindow {
     target: "wallpaper"
 
     function toggle(): void {
+      ShellState.close()
       root.launcherActive = false
       root.menuActive = false
       root.themeActive = false
@@ -198,6 +254,7 @@ PanelWindow {
     target: "theme"
 
     function toggle(): void {
+      ShellState.close()
       root.launcherActive = false
       root.menuActive = false
       root.wallpaperActive = false
@@ -205,6 +262,39 @@ PanelWindow {
     }
   }
 
+  // The four panels. Opening one closes the others; calling it again closes it.
+  IpcHandler {
+    target: "control"
+
+    function toggle(): void {
+      root.closeBigModes()
+      ShellState.toggle("control")
+    }
+  }
+  IpcHandler {
+    target: "capture"
+
+    function toggle(): void {
+      root.closeBigModes()
+      ShellState.toggle("capture")
+    }
+  }
+  IpcHandler {
+    target: "clipboard"
+
+    function toggle(): void {
+      root.closeBigModes()
+      ShellState.toggle("clipboard")
+    }
+  }
+  IpcHandler {
+    target: "power"
+
+    function toggle(): void {
+      root.closeBigModes()
+      ShellState.toggle("power")
+    }
+  }
 
   // Only the pill area receives mouse input. The rest of the window is click-through.
   mask: Region {
@@ -243,6 +333,8 @@ PanelWindow {
         return wallLoader.item.implicitHeight + 20
       if (root.themeActive && themeLoader.item)          // theme list
         return themeLoader.item.implicitHeight + 20
+      if (root.panelWanted && panelLoader.item)          // control / capture / clipboard / power
+        return panelLoader.item.implicitHeight + 20
       if (root.launcherActive && launcherLoader.item)    // launcher: as tall as its content + padding
         return launcherLoader.item.implicitHeight + 20
       if (root.menuActive && menuLoader.item)            // layout menu
@@ -257,6 +349,7 @@ PanelWindow {
     // WIDTH: same idea, first match wins.
     implicitWidth: root.wallpaperActive ? root.pillHeight * 24     // wide: the strip needs room for 9 thumbs
                 : root.themeActive ? root.pillHeight * 24
+                : (root.panelWanted && panelLoader.item) ? panelLoader.item.implicitWidth + 20   // panels size themselves
                 : root.launcherActive ? root.pillHeight * 16
                 : root.menuActive ? root.pillHeight * 16
                 : isHovered           ? root.pillHeight * 18
@@ -270,6 +363,13 @@ PanelWindow {
     topRightRadius: isOpen ? root.radius * 0 : root.radius * 0
     bottomRightRadius: isOpen ? root.radius * 2 : root.radius
     bottomLeftRadius: isOpen ? root.radius * 2 : root.radius
+
+    Behavior on bottomLeftRadius {
+      NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+    }
+    Behavior on bottomRightRadius {
+      NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+    }
 
     // (animates the old single `radius`, the per-corner radii above don't use it)
     Behavior on radius {
@@ -354,6 +454,49 @@ PanelWindow {
       active: root.wallpaperActive
       sourceComponent: WallpaperPicker {}
     }
+
+    // Panels (components/ControlPanel, CapturePanel, ClipboardPanel, PowerPanel).
+    // The panel keeps its own fixed size, centered; the pill grows/shrinks around it and
+    // `panelClip` trims anything sticking out mid-animation. That means no re-layout jitter.
+    // Fade + small slide in/out is driven by root.panelFadeIn.
+    Item {
+      id: panelClip
+      anchors.fill: parent
+      anchors.margins: 10
+      clip: true
+
+      Loader {
+        id: panelLoader
+        anchors.top: parent.top
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: item ? item.implicitWidth : 0
+        height: item ? item.implicitHeight : 0
+
+        active: root.panelActive
+        sourceComponent: root.shownPanel === "control" ? controlPanel
+                       : root.shownPanel === "capture" ? capturePanel
+                       : root.shownPanel === "clipboard" ? clipboardPanel
+                       : root.shownPanel === "power" ? powerPanel
+                       : null
+        onLoaded: if (item.takeInitialFocus) item.takeInitialFocus()
+
+        opacity: root.panelFadeIn ? 1 : 0
+        Behavior on opacity {
+          NumberAnimation { duration: root.panelFadeIn ? 280 : 150; easing.type: Easing.OutCubic }
+        }
+
+        transform: Translate {
+          y: root.panelFadeIn ? 0 : -8
+          Behavior on y {
+            NumberAnimation { duration: root.panelFadeIn ? 280 : 150; easing.type: Easing.OutCubic }
+          }
+        }
+      }
+    }
+    Component { id: controlPanel; ControlPanel {} }
+    Component { id: capturePanel; CapturePanel {} }
+    Component { id: clipboardPanel; ClipboardPanel {} }
+    Component { id: powerPanel; PowerPanel {} }
 
     // Workspace dots, fades in/out
     Loader {

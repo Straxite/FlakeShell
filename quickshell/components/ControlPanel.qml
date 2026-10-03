@@ -8,8 +8,6 @@ import Quickshell.Services.Pipewire
 import Quickshell.Services.SystemTray
 import Quickshell.Services.UPower
 import Quickshell.Widgets
-import qs
-import qs.components
 
 FocusScope {
     id: root
@@ -313,12 +311,22 @@ FocusScope {
         if (root.wifiDevice && root.expandedSection === "wifi")
             root.startWifiScanner();
     }
-    Component.onDestruction: root.stopWifiScanner()
+    // The pill creates this panel when it opens, so refresh here (the ShellState hook below only sees later changes).
+    Component.onCompleted: Backend.refreshQuickControls()
+    Component.onDestruction: {
+        root.stopWifiScanner();
+        root.stopBluetoothDiscovery();
+    }
+    function takeInitialFocus() {
+        root.forceActiveFocus();
+    }
+    // Escape: close the open Wi-Fi/Bluetooth/audio list first, then the panel itself.
     Keys.onEscapePressed: (event) => {
-        if (root.expandedSection) {
+        if (root.expandedSection)
             root.closeDetails();
-            event.accepted = true;
-        }
+        else
+            ShellState.close();
+        event.accepted = true;
     }
 
     PwObjectTracker {
@@ -346,7 +354,7 @@ FocusScope {
     Timer {
         id: sectionCloseTimer
 
-        interval: Theme.animationNormal
+        interval: Style.animationNormal
         onTriggered: {
             if (!root.expandedSection)
                 root.displayedSection = "";
@@ -526,8 +534,8 @@ FocusScope {
             z: 20
             width: compactMode ? 320 : root.width
             height: nightLightMode ? Math.min(92, availableHeight) : availableHeight
-            radius: Theme.radius
-            color: Theme.bg0
+            radius: Style.radius
+            color: Style.bg0
             clip: true
             enabled: root.expandedSection !== ""
             visible: opacity > 0
@@ -538,13 +546,13 @@ FocusScope {
                 x: {
                     const sourceTile = root.displayedSection === "audio" ? audioTile : (root.displayedSection === "output" ? outputAudioTile : nightLightTile);
                     const centeredX = sourceTile.x + sourceTile.width / 2 - devicePicker.x - width / 2;
-                    return Math.max(Theme.radius, Math.min(parent.width - width - Theme.radius, centeredX));
+                    return Math.max(Style.radius, Math.min(parent.width - width - Style.radius, centeredX));
                 }
                 width: 42
                 height: 2
                 radius: 1
                 visible: devicePicker.compactMode
-                color: Theme.primary
+                color: Style.primary
             }
 
             Item {
@@ -587,7 +595,7 @@ FocusScope {
 
                             return root.adapter && root.adapter.discovering ? "Looking for devices…" : root.bluetoothDevices.length + " available";
                         }
-                        color: root.wifiError && root.displayedSection === "wifi" ? Theme.red : Theme.muted
+                        color: root.wifiError && root.displayedSection === "wifi" ? Style.red : Style.muted
                         visible: text.length > 0
                         elide: Text.ElideRight
                         font.pixelSize: 10
@@ -622,18 +630,18 @@ FocusScope {
                     }
                     foregroundColor: {
                         if (root.displayedSection === "wifi")
-                            return Networking.wifiEnabled ? Theme.primary : Theme.muted;
+                            return Networking.wifiEnabled ? Style.primary : Style.muted;
 
                         if (root.displayedSection === "audio")
-                            return root.source && root.source.audio && !root.source.audio.muted ? Theme.primary : Theme.muted;
+                            return root.source && root.source.audio && !root.source.audio.muted ? Style.primary : Style.muted;
 
                         if (root.displayedSection === "output")
-                            return root.sink && root.sink.audio && !root.sink.audio.muted ? Theme.primary : Theme.muted;
+                            return root.sink && root.sink.audio && !root.sink.audio.muted ? Style.primary : Style.muted;
 
                         if (root.displayedSection === "nightlight")
-                            return Backend.nightLightStatus === "on" ? Theme.primary : Theme.muted;
+                            return Backend.nightLightStatus === "on" ? Style.primary : Style.muted;
 
-                        return root.adapter && root.adapter.enabled ? Theme.primary : Theme.muted;
+                        return root.adapter && root.adapter.enabled ? Style.primary : Style.muted;
                     }
                     onClicked: {
                         if (root.displayedSection === "wifi")
@@ -660,7 +668,7 @@ FocusScope {
                     enabled: root.displayedSection === "wifi" ? Networking.wifiEnabled && root.wifiDevice && !root.wifiRefreshPending : root.adapter && root.adapter.enabled && !root.adapter.discovering
                     icon: "󰑐"
                     accessibleName: root.displayedSection === "wifi" ? "Scan for Wi-Fi networks" : "Scan for Bluetooth devices"
-                    foregroundColor: enabled ? Theme.foreground : Theme.mutedDark
+                    foregroundColor: enabled ? Style.foreground : Style.mutedDark
                     onClicked: {
                         if (root.displayedSection === "wifi")
                             root.restartWifiScanner();
@@ -836,10 +844,10 @@ FocusScope {
                 anchors.margins: pendingWifiNetwork ? 7 : 0
                 height: pendingWifiNetwork ? 39 : 0
                 visible: height > 0 && root.displayedSection === "wifi"
-                radius: Theme.radiusSmall
-                color: Theme.bg1
+                radius: Style.radiusSmall
+                color: Style.bg1
                 border.width: wifiPasswordInput.activeFocus ? 1 : 0
-                border.color: Theme.primary
+                border.color: Style.primary
 
                 TextInput {
                     id: wifiPasswordInput
@@ -850,8 +858,8 @@ FocusScope {
                     anchors.bottom: parent.bottom
                     anchors.leftMargin: 10
                     anchors.rightMargin: 8
-                    color: Theme.foreground
-                    font.family: Theme.fontFamily
+                    color: Style.foreground
+                    font.family: Style.fontFamily
                     font.pixelSize: 10
                     verticalAlignment: TextInput.AlignVCenter
                     echoMode: TextInput.Password
@@ -864,7 +872,7 @@ FocusScope {
                         anchors.verticalCenter: parent.verticalCenter
                         visible: !parent.text
                         text: "Password for " + (root.pendingWifiNetwork ? root.pendingWifiNetwork.name : "network")
-                        color: Theme.mutedDark
+                        color: Style.mutedDark
                         font.pixelSize: 9
                     }
 
@@ -884,14 +892,14 @@ FocusScope {
 
                     Rectangle {
                         anchors.fill: parent
-                        radius: Theme.radiusSmall
-                        color: Theme.primary
+                        radius: Style.radiusSmall
+                        color: Style.primary
                     }
 
                     ShellText {
                         anchors.centerIn: parent
                         text: "Connect"
-                        color: Theme.bgDim
+                        color: Style.bgDim
                         font.pixelSize: 9
                         font.weight: Font.Bold
                     }
@@ -1035,7 +1043,7 @@ FocusScope {
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: Theme.animationNormal
+                    duration: Style.animationNormal
                     easing.type: Easing.OutCubic
                 }
 
@@ -1081,7 +1089,7 @@ FocusScope {
 
             width: parent.width
             height: 118
-            radius: Theme.radius
+            radius: Style.radius
             clip: true
             enabled: root.expandedSection === ""
 
@@ -1101,7 +1109,7 @@ FocusScope {
                     maskSource: Rectangle {
                         width: mediaArtwork.width
                         height: mediaArtwork.height
-                        radius: Theme.radius
+                        radius: Style.radius
                         layer.enabled: mediaArtwork.status === Image.Ready
                     }
 
@@ -1109,7 +1117,7 @@ FocusScope {
 
                 Behavior on opacity {
                     NumberAnimation {
-                        duration: Theme.animationNormal
+                        duration: Style.animationNormal
                     }
 
                 }
@@ -1126,7 +1134,7 @@ FocusScope {
 
                 ShellText {
                     text: root.sink ? "󰕾  " + (root.sink.description || "Default output") : "󰝟  No audio output"
-                    color: Theme.muted
+                    color: Style.muted
                     font.pixelSize: 9
                     elide: Text.ElideRight
                     width: parent.width
@@ -1148,7 +1156,7 @@ FocusScope {
                 ShellText {
                     width: parent.width
                     text: root.player ? (root.player.trackArtist || root.player.identity || "Unknown artist") : "Open a media player to begin"
-                    color: Theme.muted
+                    color: Style.muted
                     font.pixelSize: 10
                     elide: Text.ElideRight
                 }
@@ -1180,8 +1188,8 @@ FocusScope {
                     height: 42
                     icon: root.player && root.player.isPlaying ? "󰏤" : "󰐊"
                     accessibleName: root.player && root.player.isPlaying ? "Pause" : "Play"
-                    backgroundColor: Theme.foreground
-                    foregroundColor: Theme.bgDim
+                    backgroundColor: Style.foreground
+                    foregroundColor: Style.bgDim
                     onClicked: {
                         if (root.player && root.player.canTogglePlaying)
                             root.player.togglePlaying();
@@ -1216,7 +1224,7 @@ FocusScope {
                 ShellText {
                     anchors.verticalCenter: parent.verticalCenter
                     text: root.player ? root.formatDuration(root.player.position) : "0:00"
-                    color: Theme.muted
+                    color: Style.muted
                     font.pixelSize: 8
                 }
 
@@ -1231,7 +1239,7 @@ FocusScope {
                         width: parent.width * (root.player && root.player.length > 0 ? Math.min(1, root.player.position / root.player.length) : 0)
                         height: parent.height
                         radius: parent.radius
-                        color: Theme.foreground
+                        color: Style.foreground
                     }
 
                     MouseArea {
@@ -1248,7 +1256,7 @@ FocusScope {
                 ShellText {
                     anchors.verticalCenter: parent.verticalCenter
                     text: root.player ? root.formatDuration(root.player.length) : "0:00"
-                    color: Theme.muted
+                    color: Style.muted
                     font.pixelSize: 8
                 }
 
@@ -1259,12 +1267,12 @@ FocusScope {
 
                 GradientStop {
                     position: 0
-                    color: Theme.primaryContainer
+                    color: Style.primaryContainer
                 }
 
                 GradientStop {
                     position: 1
-                    color: Theme.bgYellow
+                    color: Style.bgYellow
                 }
 
             }
