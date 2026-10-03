@@ -12,7 +12,7 @@ Item {
     id: root
     opacity: pill.isOpen ? 1 : 0
     Behavior on opacity {
-        NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+        NumberAnimation { duration: 800; easing.type: Easing.OutCubic }
     }
 
     // ───── CONFIG: the two things you might want to change ─────

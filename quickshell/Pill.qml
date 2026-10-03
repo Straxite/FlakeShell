@@ -256,7 +256,7 @@ PanelWindow {
 
     // WIDTH: same idea, first match wins.
     implicitWidth: root.wallpaperActive ? root.pillHeight * 24     // wide: the strip needs room for 9 thumbs
-                : root.themeActive ? root.pillHeight * 16
+                : root.themeActive ? root.pillHeight * 24
                 : root.launcherActive ? root.pillHeight * 16
                 : root.menuActive ? root.pillHeight * 16
                 : isHovered           ? root.pillHeight * 18
