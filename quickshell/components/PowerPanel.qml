@@ -5,13 +5,13 @@ FocusScope {
 
     property string pendingAction: ""
     readonly property var actions: [{
-        "key": "lock",
-        "icon": "󰌾",
-        "title": "Lock"
-    }, {
         "key": "suspend",
         "icon": "󰤄",
         "title": "Suspend"
+    }, {
+        "key": "lock",
+        "icon": "󰌾",
+        "title": "Lock"
     }, {
         "key": "logout",
         "icon": "󰍃",
