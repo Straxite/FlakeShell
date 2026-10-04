@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-# orchestra-install.sh
-
-chmod +x ~/FlowFiles/install-script/setup.sh
-chmod +x ~/FlowFiles/install-script/orchestra-script.sh
-chmod +x ~/FlowFiles/install-script/packages.sh
-chmod +x ~/FlowFiles/install-script/executable-maker.sh
-chmod +x ~/FlowFiles/install-script/*.sh
