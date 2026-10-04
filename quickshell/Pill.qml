@@ -352,6 +352,18 @@ PanelWindow {
     }
   }
 
+  LockScreen { id: sessionLock }
+
+  IpcHandler {
+    target: "lock"
+
+    function lock(): void {
+      ShellState.close()
+      root.closeBigModes()
+      sessionLock.locked = true
+    }
+  }
+
   // Only the pill area receives mouse input. The rest of the window is click-through.
   mask: Region {
     item: pill

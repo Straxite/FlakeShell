@@ -13,9 +13,9 @@ Singleton {
   // ───────────── POWER ─────────────
   function power(action) {
     const commands = {
-      "lock": ["hyprlock"],
-      "suspend": ["systemctl", "suspend"],
-      "logout": ["hyprctl", "dispatch", "exit"],
+      "lock": ["qs", "ipc", "call", "lock", "lock"],
+      "suspend": ["systemctl", "sleep"],
+      "logout": ["hyprctl", "dispatch", "'hl.dsp.exit()'"],
       "reboot": ["systemctl", "reboot"],
       "shutdown": ["systemctl", "poweroff"]
     };
