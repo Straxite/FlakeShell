@@ -10,7 +10,7 @@
 //   5. the pill Rectangle: its size, shape, and everything drawn inside it
 //
 // Modes, in priority order for sizing:
-//   wallpaper strip > theme > panel (control/capture/clipboard/power) > launcher > menu
+//   wallpaper strip > theme > panel (control/capture/clipboard/power) > calendar > launcher > menu
 //   > volume/brightness popup > hover > idle
 // ─────────────────────────────────────────────────────────────────────────────
 import Quickshell
@@ -40,6 +40,8 @@ PanelWindow {
   property bool wallpaperActive: false
   // THEME: the theme list. Flipped by `ipc call theme toggle`.
   property bool themeActive: false
+  // CALENDAR: opens when you click the date (Date.qml). Also `ipc call calendar toggle`.
+  property bool calendarActive: false
 
   // PANELS: control center / capture / clipboard / power. Which one is open lives in
   // ShellState.panel ("" = none), because the panels themselves close it (Escape, action done).
@@ -52,7 +54,7 @@ PanelWindow {
   readonly property bool panelActive: shownPanel !== ""
 
   // true while any big mode owns the pill (used to hide OSDs / idle content)
-  readonly property bool anyModeOpen: launcherActive || menuActive || wallpaperActive || themeActive || panelActive
+  readonly property bool anyModeOpen: launcherActive || menuActive || wallpaperActive || themeActive || calendarActive || panelActive
 
   // Switch off every non-panel mode (the IPC handlers below use this before opening a panel).
   function closeBigModes() {
@@ -60,6 +62,14 @@ PanelWindow {
     menuActive = false
     wallpaperActive = false
     themeActive = false
+    calendarActive = false
+  }
+
+  // Called when the date is clicked.
+  function openCalendar() {
+    ShellState.close()
+    closeBigModes()
+    calendarActive = true
   }
 
   // WORKSPACES: true for 1s after the focused workspace changes (see rootTimer below).
@@ -204,6 +214,11 @@ PanelWindow {
     active: root.themeActive
     onCleared: root.themeActive = false
   }
+  HyprlandFocusGrab {
+    windows: [ root ]
+    active: root.calendarActive
+    onCleared: root.calendarActive = false
+  }
 
   HyprlandFocusGrab {
     windows: [ root ]
@@ -225,6 +240,7 @@ PanelWindow {
       root.wallpaperActive = false
       root.menuActive = false
       root.themeActive = false
+      root.calendarActive = false
       root.launcherActive = !root.launcherActive
     }
   }
@@ -236,6 +252,7 @@ PanelWindow {
       root.launcherActive = false
       root.wallpaperActive = false
       root.themeActive = false
+      root.calendarActive = false
       root.menuActive = !root.menuActive
     }
   }
@@ -247,6 +264,7 @@ PanelWindow {
       root.launcherActive = false
       root.menuActive = false
       root.themeActive = false
+      root.calendarActive = false
       root.wallpaperActive = !root.wallpaperActive
     }
   }
@@ -258,7 +276,18 @@ PanelWindow {
       root.launcherActive = false
       root.menuActive = false
       root.wallpaperActive = false
+      root.calendarActive = false
       root.themeActive = !root.themeActive
+    }
+  }
+  IpcHandler {
+    target: "calendar"
+
+    function toggle(): void {
+      const wasOpen = root.calendarActive
+      ShellState.close()
+      root.closeBigModes()
+      root.calendarActive = !wasOpen
     }
   }
 
@@ -335,6 +364,8 @@ PanelWindow {
         return themeLoader.item.implicitHeight + 20
       if (root.panelWanted && panelLoader.item)          // control / capture / clipboard / power
         return panelLoader.item.implicitHeight + 20
+      if (root.calendarActive && calendarLoader.item)    // calendar
+        return calendarLoader.item.implicitHeight + 20
       if (root.launcherActive && launcherLoader.item)    // launcher: as tall as its content + padding
         return launcherLoader.item.implicitHeight + 20
       if (root.menuActive && menuLoader.item)            // layout menu
@@ -350,6 +381,7 @@ PanelWindow {
     implicitWidth: root.wallpaperActive ? root.pillHeight * 24     // wide: the strip needs room for 9 thumbs
                 : root.themeActive ? root.pillHeight * 24
                 : (root.panelWanted && panelLoader.item) ? panelLoader.item.implicitWidth + 20   // panels size themselves
+                : root.calendarActive ? (calendarLoader.item ? calendarLoader.item.implicitWidth + 20 : root.pillHeight * 12)
                 : root.launcherActive ? root.pillHeight * 16
                 : root.menuActive ? root.pillHeight * 16
                 : isHovered           ? root.pillHeight * 12
@@ -455,6 +487,29 @@ PanelWindow {
       sourceComponent: WallpaperPicker {}
     }
 
+    // Calendar (components/Calendar.qml), opened by clicking the date (DateWidget.qml).
+    // Same trick as the panels: a clipped box, so the content fades out cleanly while the pill shrinks.
+    Item {
+      anchors.fill: parent
+      anchors.margins: 10
+      clip: true
+
+      Loader {
+        id: calendarLoader
+        anchors.top: parent.top
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: parent.width      // calendar stretches to the pill's width
+
+        active: root.calendarActive || opacity > 0     // stay loaded until the fade-out ends
+        sourceComponent: Calendar {}
+
+        opacity: root.calendarActive ? 1 : 0
+        Behavior on opacity {
+          NumberAnimation { duration: root.calendarActive ? 250 : 120; easing.type: Easing.OutCubic }
+        }
+      }
+    }
+
     // Panels (components/ControlPanel, CapturePanel, ClipboardPanel, PowerPanel).
     // The panel keeps its own fixed size, centered; the pill grows/shrinks around it and
     // `panelClip` trims anything sticking out mid-animation. That means no re-layout jitter.
@@ -531,6 +586,10 @@ PanelWindow {
       target: themeLoader.item
       function onCloseRequested() { root.themeActive = false }
     }
+    Connections {
+      target: calendarLoader.item
+      function onCloseRequested() { root.calendarActive = false }
+    }
 
     // ───── OSDs ─────
     // Hidden while any bigger mode is showing.
@@ -557,7 +616,10 @@ PanelWindow {
 
     // ───── IDLE CONTENT ─────
     // The normal clock / date / battery, hidden whenever anything else is using the pill.
-    Clock { visible: !root.anyModeOpen && !root.showWorkspaces && !root.showVolume && !root.showBrightness }
-    Date { hovered: pill.isHovered; visible: !root.anyModeOpen && !root.showWorkspaces && !root.showVolume && !root.showBrightness }
+    DateWidget {
+      hovered: pill.isHovered
+      visible: !root.anyModeOpen && !root.showWorkspaces && !root.showVolume && !root.showBrightness
+      onClicked: root.openCalendar()
+    }
   }
 }
