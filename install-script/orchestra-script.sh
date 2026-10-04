@@ -14,7 +14,7 @@ RESET='\033[0m'
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 SCRIPT_DIR="${BASH_SOURCE[0]%/*}"
-REPO_DIR="$HOME/FlowFiles"
+REPO_DIR="$HOME/FlakeShell"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 clear_screen() { printf '\033[2J\033[H'; }
