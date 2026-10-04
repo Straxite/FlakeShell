@@ -26,16 +26,34 @@ We have an Install Script as well guys! Now no more manual work..
 . Momoisay (for the terminal animated girl | https://github.com/Mon4sm/momoisay | install it from here)  
 . This setup also uses LutgenStudio to generate wallpapers for particular themes so there are consistency among themes and walls (Install lutgen-studio-bin from the AUR, then run lutgen-studio & disown in terminal to launch or bind "lutgen.sh" in hypr/scripts to launch it via keybind)
 
-## Keybindings
+## Shell Bindings
 
 ```
-Open Terminal = alt + Q  
-Close Window = SUPER + Q  
-Reload waybar = SUPER + W  
-App Launcher = alt + SPACE  
-Theme Layout Switcher = SUPER + SPACE  
-Files = SUPER + E  
-Logout Menu = SUPER + M
+App Launcher:         Alt + Space
+Layout Menu:          Super + Space
+Wallpaper Switcher:   Super + W
+Screen Capture Menu:  Super + Ctrl + R
+Power Menu:           Super + M
+Control Panel:        Super + Period
+Notification Panel:   Super + A
+ClipBoard:            Alt + V
+```
+
+## Common Bindings
+
+```
+Terminal:             Alt + Q
+Close Window:         Super + Q
+File Manager:         Super + E
+Float Window:         Super + V
+Full screen Window:   Alt + V
+Screenshot:           Super + Print
+Brave Browser:        Super + H
+Lutgen Studio:        Super + C
+Yazi File Manager:    Super + Y
+Task Manager:         Ctrl + Shift + Escape
+Scroll Overview:      Alt + Tab
+Lock Screen:          Super + L
 ```
 
 ## Installation  
