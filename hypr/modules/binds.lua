@@ -36,7 +36,6 @@ hl.bind(mainMod .. " + PRINT", hl.dsp.exec_cmd("hyprshot -m region && satty --fi
 -- hl.bind(alt .. " + TAB", hl.dsp.exec_cmd("snappy-switcher toggle"))
 -- hl.bind(alt .. " + TAB", hl.dsp.exec_cmd("snappy-switcher next"))
 
-hl.bind(mainMod .. " + A", hl.dsp.exec_cmd("swaync-client -t"))
 hl.bind(mainMod .. " + H", hl.dsp.exec_cmd("brave"))
 hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("~/.config/hypr/scripts/lutgen.sh"))
 hl.bind(alt .. " + Z", hl.dsp.exec_cmd("gsr-ui"))
@@ -77,6 +76,7 @@ hl.bind(alt .. " + SPACE", hl.dsp.exec_cmd("qs ipc call launcher toggle"))
 hl.bind(mainMod .. " + R", hl.dsp.exec_cmd("qs kill | qs"))
 hl.bind(mainMod .. " + W", hl.dsp.exec_cmd("qs ipc call wallpaper toggle"))
 hl.bind("CTRL + SUPER + R", hl.dsp.exec_cmd("qs ipc call capture toggle"))
+hl.bind(mainMod .. " + A", hl.dsp.exec_cmd("qs ipc call notifications toggle"))
 
 -- Switch workspaces with mainMod + [0-9]
 -- Move active window to a workspace with mainMod + SHIFT + [0-9]
