@@ -83,11 +83,11 @@ Move to Special Workspace:   Shift + Super + S
 
 Copy this command to clone the repo in "/home/USER" and make installation media executable -->  
 ```
-git clone https://github.com/Straxite/FlowFiles.git && chmod +x ~/FlowFiles/install-script/orchestra-install.sh && ~/FlowFiles/install-script/orchestra-install.sh
+git clone https://github.com/Straxite/FlowFiles.git && chmod +x ~/FlakeShell/install-script/orchestra-install.sh && ~/FlakeShell/install-script/orchestra-install.sh
 ```
 Then Run the orchestra script by running this command -->  
 ```
-cd ~/FlowFiles/install-script/ && ./orchestra-script.sh
+cd ~/FlakeShell/install-script/ && ./orchestra-script.sh
 ```
 
 
