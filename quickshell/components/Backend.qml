@@ -15,7 +15,7 @@ Singleton {
     const commands = {
       "lock": ["qs", "ipc", "call", "lock", "lock"],
       "suspend": ["systemctl", "sleep"],
-      "logout": ["hyprctl", "dispatch", "'hl.dsp.exit()'"],
+      "logout": ["hyprctl", "dispatch", "hl.dsp.exit()"],
       "reboot": ["systemctl", "reboot"],
       "shutdown": ["systemctl", "poweroff"]
     };
