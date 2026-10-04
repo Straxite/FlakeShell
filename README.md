@@ -1,7 +1,7 @@
 ## FlowFiles
 
 <img width="1920" height="37" alt="image" src="https://github.com/user-attachments/assets/aaad5920-5033-4061-94b8-bb9bc6b723bb" />
-
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/e4dbbf9e-8e7f-41bd-9f53-585b33efdeff" />
 
 ##  
 Hieeee! My name is Hannah,  
@@ -9,14 +9,13 @@ and this repo is my Hyprland rice and i hope that you all love this..
 We have an Install Script as well guys! Now no more manual work..
 
 ## Dependencies  
-. Waybar (install waybar-cava-git from aur | i have my own waybar-cava build in my package repo the icons in that are not bugged so try that if the package in bugged in the latest git build of waybar cava)  
+. Quickshell  
 . Nitch  
 . Oh-My-Zsh (https://ohmyz.sh/ |       go check it out!)  
 . Powerlevel10k (https://github.com/romkatv/powerlevel10k | For installation just install it via ohmyzsh and when you clone it, go to your .zshrc and change the theme to "powerlevel10k/powerlevel10k")  
 . Matugen  
 . Swaync  
 . Sawyosd  
-. Quickshell  
 . Bluetuith  
 . Awww wallpaper utility  
 . Hyprland scroll overview Plugin for niri like alt + tab    
