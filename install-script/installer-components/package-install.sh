@@ -14,7 +14,7 @@ PACMAN_PACKAGES=(
     quickshell eza flatpak yazi satty pavucontrol btop nwg-look
     gpu-screen-recorder-ui zsh libcava waybar-cava fastfetch
     ttf-jetbrains-mono-nerd perl-file-mimeinfo otf-font-awesome zed
-    nemo-fileroller
+    nemo-fileroller wf-recorder
 )
 
 AUR_PACKAGES=(
