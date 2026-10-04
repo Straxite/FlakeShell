@@ -10,7 +10,7 @@
 //   5. the pill Rectangle: its size, shape, and everything drawn inside it
 //
 // Modes, in priority order for sizing:
-//   wallpaper strip > theme > panel (control/capture/clipboard/power) > calendar > launcher > menu
+//   wallpaper strip > theme > panel (control/capture/clipboard/power) > notifications > calendar > launcher > menu
 //   > volume/brightness popup > hover > idle
 // ─────────────────────────────────────────────────────────────────────────────
 import Quickshell
@@ -20,7 +20,7 @@ import QtQuick.Layouts
 import Quickshell.Io               // Process, IpcHandler, SplitParser
 import Quickshell.Hyprland         // workspace events + HyprlandFocusGrab
 import Quickshell.Services.Pipewire        // volume
-import Quickshell.Services.Notifications   // (imported, not used yet)
+import Quickshell.Services.Notifications   // notification daemon
 import "./components"              // Launcher, Menu, Workspaces, WallpaperPicker, Clock, ...
 
 PanelWindow {
@@ -42,6 +42,13 @@ PanelWindow {
   property bool themeActive: false
   // CALENDAR: opens when you click the date (Date.qml). Also `ipc call calendar toggle`.
   property bool calendarActive: false
+  // NOTIFICATIONS: the notification list. Flipped by `ipc call notifications toggle`.
+  property bool notifActive: false
+
+  // TOAST: the pill briefly shows the newest notification (not a mode, it never opens over one).
+  property var toastNotif: null
+  property bool showToast: false
+  property int toastDuration: 3000   // ms the toast stays before the pill goes back to normal
 
   // PANELS: control center / capture / clipboard / power. Which one is open lives in
   // ShellState.panel ("" = none), because the panels themselves close it (Escape, action done).
@@ -54,7 +61,7 @@ PanelWindow {
   readonly property bool panelActive: shownPanel !== ""
 
   // true while any big mode owns the pill (used to hide OSDs / idle content)
-  readonly property bool anyModeOpen: launcherActive || menuActive || wallpaperActive || themeActive || calendarActive || panelActive
+  readonly property bool anyModeOpen: launcherActive || menuActive || wallpaperActive || themeActive || calendarActive || notifActive || panelActive
 
   // Switch off every non-panel mode (the IPC handlers below use this before opening a panel).
   function closeBigModes() {
@@ -63,6 +70,7 @@ PanelWindow {
     wallpaperActive = false
     themeActive = false
     calendarActive = false
+    notifActive = false
   }
 
   // Called when the date is clicked.
@@ -100,6 +108,62 @@ PanelWindow {
     id: panelSwapTimer
     interval: 180
     onTriggered: { root.shownPanel = ShellState.panel; root.panelFadeIn = true }
+  }
+
+  // ───── NOTIFICATIONS ─────
+  // This is the notification daemon. `tracked = true` keeps a notification in
+  // trackedNotifications until you dismiss it, which is what the panel lists.
+  // (Stop swaync first: only one daemon can own org.freedesktop.Notifications.)
+  NotificationServer {
+    id: notifServer
+    bodySupported: true
+    actionsSupported: true
+    imageSupported: true
+    keepOnReload: true
+    onNotification: n => {
+      n.tracked = true
+      root.pokeToast(n)
+    }
+  }
+
+  // Show the newest notification in the pill and (re)start its hide timer.
+  function pokeToast(n) {
+    if (anyModeOpen) return            // panel/launcher/etc. already own the pill
+    toastNotif = n
+    showVolume = false                 // the toast wins over the OSDs
+    showBrightness = false
+    showToast = true
+    toastTimer.interval = toastDuration
+    toastTimer.restart()
+  }
+
+  // Click on the toast -> open the full panel.
+  function openNotifs() {
+    showToast = false
+    ShellState.close()
+    closeBigModes()
+    notifActive = true
+  }
+
+  Timer {
+    id: toastTimer
+    onTriggered: root.showToast = false
+  }
+
+  // Hovering the pill pauses the toast; moving away gives it a fresh countdown.
+  Connections {
+    target: pill
+    function onIsHoveredChanged() {
+      if (!root.showToast) return
+      if (pill.isHovered) toastTimer.stop()
+      else toastTimer.restart()
+    }
+  }
+
+  // If the app (or you) closes the notification, drop the toast right away.
+  Connections {
+    target: root.toastNotif
+    function onClosed() { root.showToast = false }
   }
 
   // ───── VOLUME ─────
@@ -222,6 +286,12 @@ PanelWindow {
 
   HyprlandFocusGrab {
     windows: [ root ]
+    active: root.notifActive
+    onCleared: root.notifActive = false
+  }
+
+  HyprlandFocusGrab {
+    windows: [ root ]
     active: root.panelActive
     onCleared: ShellState.close()
   }
@@ -241,6 +311,7 @@ PanelWindow {
       root.menuActive = false
       root.themeActive = false
       root.calendarActive = false
+      root.notifActive = false
       root.launcherActive = !root.launcherActive
     }
   }
@@ -253,6 +324,7 @@ PanelWindow {
       root.wallpaperActive = false
       root.themeActive = false
       root.calendarActive = false
+      root.notifActive = false
       root.menuActive = !root.menuActive
     }
   }
@@ -265,6 +337,7 @@ PanelWindow {
       root.menuActive = false
       root.themeActive = false
       root.calendarActive = false
+      root.notifActive = false
       root.wallpaperActive = !root.wallpaperActive
     }
   }
@@ -277,6 +350,7 @@ PanelWindow {
       root.menuActive = false
       root.wallpaperActive = false
       root.calendarActive = false
+      root.notifActive = false
       root.themeActive = !root.themeActive
     }
   }
@@ -288,6 +362,16 @@ PanelWindow {
       ShellState.close()
       root.closeBigModes()
       root.calendarActive = !wasOpen
+    }
+  }
+  IpcHandler {
+    target: "notifications"
+
+    function toggle(): void {
+      const wasOpen = root.notifActive
+      ShellState.close()
+      root.closeBigModes()
+      root.notifActive = !wasOpen
     }
   }
 
@@ -352,7 +436,7 @@ PanelWindow {
     property bool isHovered: hover.hovered
 
     // "Open" pills get rounder bottom corners (see the radius lines below).
-    property bool isOpen: isHovered || root.anyModeOpen
+    property bool isOpen: isHovered || root.anyModeOpen || root.showToast
     // (unused right now, safe to delete or use later)
     property bool isShowing: isHovered || root.showWorkspaces
 
@@ -364,12 +448,16 @@ PanelWindow {
         return themeLoader.item.implicitHeight + 20
       if (root.panelWanted && panelLoader.item)          // control / capture / clipboard / power
         return panelLoader.item.implicitHeight + 20
+      if (root.notifActive && notifLoader.item)          // notifications
+        return notifLoader.item.implicitHeight + 20
       if (root.calendarActive && calendarLoader.item)    // calendar
         return calendarLoader.item.implicitHeight + 20
       if (root.launcherActive && launcherLoader.item)    // launcher: as tall as its content + padding
         return launcherLoader.item.implicitHeight + 20
       if (root.menuActive && menuLoader.item)            // layout menu
         return menuLoader.item.implicitHeight + 20
+      if (root.showToast)                                // notification toast
+        return toast.implicitHeight + 20
       if (root.showVolume)                               // OSDs: just slightly taller than idle
         return root.pillHeight + 5
       if (root.showBrightness)
@@ -381,9 +469,11 @@ PanelWindow {
     implicitWidth: root.wallpaperActive ? root.pillHeight * 24     // wide: the strip needs room for 9 thumbs
                 : root.themeActive ? root.pillHeight * 24
                 : (root.panelWanted && panelLoader.item) ? panelLoader.item.implicitWidth + 20   // panels size themselves
+                : root.notifActive ? (notifLoader.item ? notifLoader.item.implicitWidth + 20 : root.pillHeight * 14)
                 : root.calendarActive ? (calendarLoader.item ? calendarLoader.item.implicitWidth + 20 : root.pillHeight * 12)
                 : root.launcherActive ? root.pillHeight * 16
                 : root.menuActive ? root.pillHeight * 16
+                : root.showToast      ? root.pillHeight * 14
                 : isHovered           ? root.pillHeight * 12
                 : (root.showVolume || root.showBrightness) ? root.pillHeight * 12
                 : root.showWorkspaces           ? root.pillHeight * 4
@@ -518,6 +608,32 @@ PanelWindow {
       }
     }
 
+    // Notifications (components/NotificationPanel.qml).
+    // Same clipped-box trick as the calendar: the panel keeps its own size, centered.
+    Item {
+      anchors.fill: parent
+      anchors.margins: 10
+      clip: true
+
+      Loader {
+        id: notifLoader
+        anchors.top: parent.top
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: item ? item.implicitWidth : 0
+        height: item ? item.implicitHeight : 0
+
+        active: root.notifActive || opacity > 0     // stay loaded until the fade-out ends
+        sourceComponent: notifPanel
+        onLoaded: item.takeInitialFocus()
+
+        opacity: root.notifActive ? 1 : 0
+        Behavior on opacity {
+          NumberAnimation { duration: root.notifActive ? 250 : 120; easing.type: Easing.OutCubic }
+        }
+      }
+    }
+    Component { id: notifPanel; NotificationPanel { notifications: notifServer.trackedNotifications } }
+
     // Panels (components/ControlPanel, CapturePanel, ClipboardPanel, PowerPanel).
     // The panel keeps its own fixed size, centered; the pill grows/shrinks around it and
     // `panelClip` trims anything sticking out mid-animation. That means no re-layout jitter.
@@ -566,8 +682,8 @@ PanelWindow {
       id: wsLoader
       anchors.horizontalCenter: parent.horizontalCenter
       anchors.verticalCenter: parent.verticalCenter
-      active: root.showWorkspaces && !root.anyModeOpen
-      visible: root.showWorkspaces && !root.anyModeOpen
+      active: root.showWorkspaces && !root.anyModeOpen && !root.showToast
+      visible: root.showWorkspaces && !root.anyModeOpen && !root.showToast
       sourceComponent: Workspaces {}
       opacity: root.showWorkspaces ? 1 : 0
 
@@ -598,6 +714,28 @@ PanelWindow {
       target: calendarLoader.item
       function onCloseRequested() { root.calendarActive = false }
     }
+    Connections {
+      target: notifLoader.item
+      function onCloseRequested() { root.notifActive = false }
+    }
+
+    // ───── NOTIFICATION TOAST ─────
+    NotifToast {
+      id: toast
+      anchors.fill: parent
+      anchors.margins: 10
+      notif: root.toastNotif
+      opacity: (root.showToast && !root.anyModeOpen) ? 1 : 0
+      visible: opacity > 0
+      Behavior on opacity {
+        NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
+      }
+      onClicked: root.openNotifs()
+      onDismissed: {
+        root.showToast = false
+        root.toastNotif?.dismiss()
+      }
+    }
 
     // ───── OSDs ─────
     // Hidden while any bigger mode is showing.
@@ -606,7 +744,7 @@ PanelWindow {
       vol: root.vol
       muted: root.muted
       opacity: visible ? 1 : 0
-      visible: root.showVolume && !root.anyModeOpen && !root.showWorkspaces
+      visible: root.showVolume && !root.anyModeOpen && !root.showWorkspaces && !root.showToast
       Behavior on opacity {
         NumberAnimation { duration: 2000; easing.type: Easing.OutCubic }
       }
@@ -616,7 +754,7 @@ PanelWindow {
       anchors.centerIn: parent
       level: root.brightness
       opacity: visible ? 1 : 0
-      visible: root.showBrightness && !root.anyModeOpen && !root.showWorkspaces
+      visible: root.showBrightness && !root.anyModeOpen && !root.showWorkspaces && !root.showToast
       Behavior on opacity {
         NumberAnimation { duration: 2000; easing.type: Easing.OutCubic }
       }
@@ -626,7 +764,7 @@ PanelWindow {
     // The normal clock / date / battery, hidden whenever anything else is using the pill.
     DateWidget {
       hovered: pill.isHovered
-      visible: !root.anyModeOpen && !root.showWorkspaces && !root.showVolume && !root.showBrightness
+      visible: !root.anyModeOpen && !root.showWorkspaces && !root.showVolume && !root.showBrightness && !root.showToast
       onClicked: root.openCalendar()
     }
   }

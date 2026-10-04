@@ -64,7 +64,7 @@ Item {
 
       width: list.width
       implicitHeight: root.rowHeight
-      radius: 12
+      radius: 16
       color: list.currentIndex === index ? "#313036" : "transparent"
 
       Behavior on color {

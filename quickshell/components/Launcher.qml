@@ -391,7 +391,7 @@ Item {
 
         width: list.width
         implicitHeight: root.rowHeight
-        radius: 12
+        radius: 16
         color: selected ? "#313036" : "transparent"
         Behavior on color { ColorAnimation { duration: 100 } }
 
