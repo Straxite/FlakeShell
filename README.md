@@ -1,6 +1,7 @@
 ## FlowFiles
 
-<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/93031255-1e6a-4821-98a6-60727ad75a40" />
+<img width="1920" height="37" alt="image" src="https://github.com/user-attachments/assets/aaad5920-5033-4061-94b8-bb9bc6b723bb" />
+
 
 ##  
 Hieeee! My name is Hannah,  
