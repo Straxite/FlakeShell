@@ -8,73 +8,73 @@ QtObject {
     // Primary
     // ─────────────────────────────
 
-    readonly property color primary: "#e8c26c"
-    readonly property color m3onPrimary: "#3f2e00"
-    readonly property color primaryContainer: "#5b4300"
-    readonly property color m3onPrimaryContainer: "#ffdf9b"
+    readonly property color primary: "#adc6ff"
+    readonly property color m3onPrimary: "#112f60"
+    readonly property color primaryContainer: "#2b4678"
+    readonly property color m3onPrimaryContainer: "#d8e2ff"
 
     // ─────────────────────────────
     // Secondary
     // ─────────────────────────────
 
-    readonly property color secondary: "#d7c4a0"
-    readonly property color m3onSecondary: "#3a2f15"
-    readonly property color secondaryContainer: "#52452a"
-    readonly property color m3onSecondaryContainer: "#f4e0bb"
+    readonly property color secondary: "#bfc6dc"
+    readonly property color m3onSecondary: "#293041"
+    readonly property color secondaryContainer: "#3f4759"
+    readonly property color m3onSecondaryContainer: "#dbe2f9"
 
     // ─────────────────────────────
     // Tertiary
     // ─────────────────────────────
 
-    readonly property color tertiary: "#b0cfaa"
-    readonly property color m3onTertiary: "#1c361c"
-    readonly property color tertiaryContainer: "#324d31"
-    readonly property color m3onTertiaryContainer: "#cbebc5"
+    readonly property color tertiary: "#debcdf"
+    readonly property color m3onTertiary: "#402843"
+    readonly property color tertiaryContainer: "#583e5b"
+    readonly property color m3onTertiaryContainer: "#fbd7fc"
 
     // ─────────────────────────────
     // Background / Surface
     // ─────────────────────────────
 
-    readonly property color background: "#17130b"
-    readonly property color m3onBackground: "#ebe1d4"
+    readonly property color background: "#111318"
+    readonly property color m3onBackground: "#e2e2e9"
 
-    readonly property color surface: "#17130b"
-    readonly property color m3onSurface: "#ebe1d4"
-    readonly property color surfaceVariant: "#4d4639"
-    readonly property color m3onSurfaceVariant: "#d0c5b4"
+    readonly property color surface: "#111318"
+    readonly property color m3onSurface: "#e2e2e9"
+    readonly property color surfaceVariant: "#44474f"
+    readonly property color m3onSurfaceVariant: "#c4c6d0"
 
     // ─────────────────────────────
     // Surface Containers
     // ─────────────────────────────
 
-    readonly property color surfaceDim: "#17130b"
-    readonly property color surfaceBright: "#3e392f"
+    readonly property color surfaceDim: "#111318"
+    readonly property color surfaceBright: "#37393e"
 
-    readonly property color surfaceContainerLowest: "#110e07"
-    readonly property color surfaceContainerLow: "#1f1b13"
-    readonly property color surfaceContainer: "#231f17"
-    readonly property color surfaceContainerHigh: "#2e2921"
-    readonly property color surfaceContainerHighest: "#39342b"
+    readonly property color surfaceContainerLowest: "#0c0e13"
+    readonly property color surfaceContainerLow: "#1a1b20"
+    readonly property color surfaceContainer: "#1e1f25"
+    readonly property color surfaceContainerHigh: "#282a2f"
+    readonly property color surfaceContainerHighest: "#33353a"
 
     // ─────────────────────────────
     // Utility
     // ─────────────────────────────
 
-    readonly property color outline: "#999080"
-    readonly property color outlineVariant: "#4d4639"
+    readonly property color outline: "#8e9099"
+    readonly property color outlineVariant: "#44474f"
 
     readonly property color error: "#ffb4ab"
     readonly property color m3onError: "#690005"
     readonly property color errorContainer: "#93000a"
     readonly property color m3onErrorContainer: "#ffdad6"
 
-    readonly property color inverseSurface: "#ebe1d4"
-    readonly property color inverseOnSurface: "#353027"
-    readonly property color inversePrimary: "#775a0b"
+    readonly property color inverseSurface: "#e2e2e9"
+    readonly property color inverseOnSurface: "#2f3036"
+    readonly property color inversePrimary: "#445e91"
 
     readonly property color scrim: "#000000"
     readonly property color shadow: "#000000"
 
     // Original wallpaper-derived color
-    readonly property color sourceColor: "#92856c"
+    readonly property color sourceColor: "#313b51"
 }
