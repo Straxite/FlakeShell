@@ -1,8 +1,11 @@
 ## FlowFiles
 
-<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/e4dbbf9e-8e7f-41bd-9f53-585b33efdeff" />
 
-##  
+###
+<img width="2172" height="724" alt="FlakeShell" src="https://github.com/user-attachments/assets/157cf787-f051-4317-a537-0d737c599175" />
+
+
+### 
 Hieeee! My name is Hannah,  
 and this repo is my Hyprland rice and i hope that you all love this..  
 We have an Install Script as well guys! Now no more manual work..
