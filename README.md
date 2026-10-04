@@ -54,6 +54,26 @@ Yazi File Manager:    Super + Y
 Task Manager:         Ctrl + Shift + Escape
 Scroll Overview:      Alt + Tab
 Lock Screen:          Super + L
+
+Volume Increase: Ctrl + Up
+Volume Decrease: Ctrl + Down
+
+Brightness Increase: Shift + Up
+Brightness Decrease: Shift + DOwn
+```
+
+## Window Bindings
+
+```
+Move Window Left: Alt + Left
+Move Window Right: Alt + Right
+Move Window Up: Alt + Up
+Move Window Down: Alt + Down
+
+Move Window Focus to Left: Super + Left
+Move Window Focus to Right: Super + Right
+Move Window Focus to Up: Super + Up 
+Move Window Focus to Down: Super + Down
 ```
 
 ## Installation  
