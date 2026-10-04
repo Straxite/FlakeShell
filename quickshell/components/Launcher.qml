@@ -5,425 +5,445 @@ import Quickshell.Io
 import Quickshell.Widgets
 import qs
 
-// Embedded inside the bar's pill. Only the PILL animates size — this
-// component's own implicitHeight/preferredHeight change instantly,
-// so there's a single source of animation instead of two chasing
-// each other (that was the source of the jitter).
+// Launcher embedded in the bar's pill.
+//
+// Like ControlPanel, nothing is shown half-loaded: history is read
+// synchronously, the first rows' icons must finish loading, and the pill's
+// resize must have settled. Only then does the content fade in, all at once.
+//
+// Search bar tricks:
+//   text      fuzzy app search (name, keywords, categories, "browser", "editor"...)
+//   2+2*3     calculator, Enter copies the result
+//   > cmd     run a shell command
+//   ? text    web search (a link like www.x.com or https://... just opens)
+//   Tab       complete the selected app's name
+//   Alt+1..9  launch the Nth visible row
 Item {
   id: root
 
+  signal closeRequested()
+
+  // ---------- sizes ----------
   readonly property int rowHeight: 46
   readonly property int rowSpacing: 4
   readonly property int maxVisibleRows: 6
   readonly property int searchBarHeight: 60
   readonly property int sectionSpacing: 10
+  readonly property int recentThreshold: 5   // launches before an app counts as "recent"
   readonly property int maxRecents: 6
 
-  opacity: pill.isHovered ? 1 : 0
+  readonly property int visibleRows: Math.max(1, Math.min(results.length, maxVisibleRows))
+  readonly property real listHeight: visibleRows * rowHeight + (visibleRows - 1) * rowSpacing
 
-  Behavior on opacity {
-    NumberAnimation { duration: 300; easing.type: Easing.OutQuad  }
-  }
-
+  implicitWidth: 480
+  implicitHeight: searchBarHeight + sectionSpacing + listHeight
   clip: true
 
-  property var apps: DesktopEntries.applications.values
-  property string query: ""
+  // ---------- load gate ----------
+  // `ready` flips once everything is loaded. The pill can read it too.
+  property bool settled: false      // pill resize has had time to settle
+  property bool iconsLoaded: false  // first visible rows have their icons
+  readonly property bool ready: settled && iconsLoaded
 
-  // recent app ids persisted to disk
+  Timer { interval: 120; running: true; onTriggered: root.settled = true }
+  // Safety net so a broken icon can never keep the launcher hidden.
+  Timer { interval: 400; running: true; onTriggered: root.iconsLoaded = true }
+
+  function checkIcons() {
+    if (iconsLoaded) return
+    for (var i = 0; i < visibleRows; ++i) {
+      var row = list.itemAtIndex(i)
+      if (!row || !row.iconReady) return
+    }
+    iconsLoaded = true
+  }
+
+  // ---------- launch history ----------
   FileView {
-    id: recentsFile
     path: Quickshell.stateDir + "/launcher-recents.json"
-    watchChanges: true
-    onFileChanged: reload()
+    blockLoading: true   // read before the first frame, not after
     onAdapterUpdated: writeAdapter()
 
     JsonAdapter {
-      id: recentsAdapter
-      // Launch history is kept as a simple list so we can build a
-      // frequency-based ranking without an extra data structure.
+      id: recents
       property list<string> recentIds: []
     }
   }
 
-  // An app only becomes a "recent" after being launched 5 times.
-  // Before that, every launch gives it one more step up the normal list.
-  readonly property int recentThreshold: 5
-
-  function launchCount(id) {
-    var count = 0
-    for (var i = 0; i < recentsAdapter.recentIds.length; ++i) {
-      if (recentsAdapter.recentIds[i] === id)
-        ++count
+  // id -> number of launches
+  readonly property var counts: {
+    var m = {}
+    for (var i = 0; i < recents.recentIds.length; ++i) {
+      var id = recents.recentIds[i]
+      m[id] = (m[id] || 0) + 1
     }
-    return count
+    return m
   }
 
-  function recordRecent(id) {
-    var list = recentsAdapter.recentIds.slice()
-    list.push(id)
-
-    // Keep enough history for ranking, while preventing the file from
-    // growing forever. Counts older than this still behave sensibly.
-    if (list.length > 100)
-      list = list.slice(list.length - 100)
-
-    recentsAdapter.recentIds = list
+  function recordLaunch(id) {
+    var l = recents.recentIds.slice()
+    l.push(id)
+    if (l.length > 100) l = l.slice(l.length - 100)
+    recents.recentIds = l
   }
 
-  function rankedApps(source) {
-    var ranked = source.slice()
-
-    ranked.sort(function(a, b) {
-      var countA = root.launchCount(a.id)
-      var countB = root.launchCount(b.id)
-
-      if (countA !== countB)
-        return countB - countA
-
-      // Stable-ish fallback: keep the desktop entry order when counts match.
-      return 0
-    })
-
-    return ranked
+  function byUsage(a, b) {
+    return (counts[b.id] || 0) - (counts[a.id] || 0) || a.name.localeCompare(b.name)
   }
 
-  // Freedesktop category -> words people actually type. Lets "browser"
-  // find every app tagged WebBrowser, "editor" every TextEditor, etc.
-  readonly property var categoryAliases: ({
-    "WebBrowser": ["browser", "web", "internet"],
-    "Network": ["network", "internet"],
-    "Email": ["email", "mail"],
-    "InstantMessaging": ["chat", "messenger", "messaging"],
-    "Chat": ["chat", "messenger", "messaging"],
-    "VideoConference": ["call", "meeting", "video"],
-    "FileTransfer": ["download", "torrent", "transfer"],
-    "P2P": ["torrent", "download"],
-    "TerminalEmulator": ["terminal", "console", "shell"],
-    "TextEditor": ["editor", "text"],
-    "IDE": ["ide", "editor", "code", "dev"],
-    "Development": ["dev", "development", "code", "programming"],
-    "FileManager": ["files", "file manager", "explorer"],
-    "FileTools": ["files"],
-    "Audio": ["music", "audio", "sound"],
-    "Music": ["music", "audio"],
-    "Video": ["video", "movie", "media"],
-    "Player": ["player", "media"],
-    "AudioVideo": ["media", "multimedia"],
-    "Graphics": ["graphics", "image", "photo", "art"],
-    "Photography": ["photo", "camera"],
-    "RasterGraphics": ["image", "photo"],
-    "VectorGraphics": ["vector", "svg", "image"],
-    "Office": ["office", "document"],
-    "WordProcessor": ["word", "document", "writer"],
-    "Spreadsheet": ["spreadsheet", "sheet", "excel"],
-    "Presentation": ["slides", "presentation"],
-    "Viewer": ["viewer", "pdf", "reader"],
-    "Game": ["game", "games", "gaming"],
-    "Settings": ["settings", "preferences", "config"],
-    "System": ["system"],
-    "Monitor": ["monitor", "task manager", "resources"],
-    "Utility": ["utility", "tool", "tools"],
-    "Calculator": ["calculator", "calc"],
-    "Science": ["science"],
-    "Education": ["education", "learn"]
+  // ---------- app types ----------
+  // category -> [label shown in the row, extra words people type]
+  // Ordered specific -> generic so "WebBrowser" labels before "Network".
+  readonly property var types: ({
+    "WebBrowser": ["Web Browser", "browser", "web", "internet"],
+    "Email": ["Email Client", "email", "mail"],
+    "InstantMessaging": ["Messenger", "chat", "messaging"],
+    "Chat": ["Messenger", "chat", "messaging"],
+    "VideoConference": ["Video Call", "call", "meeting", "video"],
+    "P2P": ["Torrent Client", "torrent", "download"],
+    "FileTransfer": ["File Transfer", "download", "transfer"],
+    "TerminalEmulator": ["Terminal", "console", "shell"],
+    "TextEditor": ["Text Editor", "editor", "text"],
+    "IDE": ["Code Editor", "ide", "editor", "code", "dev"],
+    "FileManager": ["File Manager", "files", "explorer"],
+    "FileTools": ["File Tools", "files"],
+    "Calculator": ["Calculator", "calc"],
+    "Monitor": ["System Monitor", "task manager", "resources"],
+    "WordProcessor": ["Word Processor", "word", "document", "writer"],
+    "Spreadsheet": ["Spreadsheet", "sheet", "excel"],
+    "Presentation": ["Presentation", "slides"],
+    "Office": ["Office", "document"],
+    "Music": ["Music Player", "music", "audio"],
+    "Player": ["Media Player", "player", "media"],
+    "Video": ["Video", "movie", "media"],
+    "Audio": ["Audio", "music", "sound"],
+    "AudioVideo": ["Multimedia", "media", "multimedia"],
+    "RasterGraphics": ["Image Editor", "image", "photo"],
+    "VectorGraphics": ["Vector Graphics", "vector", "svg", "image"],
+    "Photography": ["Photography", "photo", "camera"],
+    "Viewer": ["Viewer", "viewer", "pdf", "reader"],
+    "Graphics": ["Graphics", "image", "art"],
+    "Game": ["Game", "games", "gaming"],
+    "Development": ["Development", "dev", "code", "programming"],
+    "Settings": ["Settings", "preferences", "config"],
+    "System": ["System", "system"],
+    "Network": ["Network", "internet"],
+    "Utility": ["Utility", "tool", "tools"],
+    "Science": ["Science", "science"],
+    "Education": ["Education", "learn"]
   })
 
-  // Everything searchable about an app, lowercased, for type-based matching:
-  // generic name ("Web Browser"), keywords, and categories + their aliases.
-  function typeHaystack(app) {
-    var parts = []
-    if (app.genericName) parts.push(app.genericName)
-    if (app.keywords) {
-      for (var i = 0; i < app.keywords.length; ++i)
-        parts.push(app.keywords[i])
-    }
-    if (app.categories) {
-      for (var j = 0; j < app.categories.length; ++j) {
-        var c = app.categories[j]
-        parts.push(c)
-        var al = root.categoryAliases[c]
-        if (al) parts = parts.concat(al)
-      }
-    }
-    return parts.join(" | ").toLowerCase()
-  }
-
-  // Label shown next to each app. Uses the app's own GenericName when it
-  // defines one, otherwise falls back to its most specific category.
-  // Ordered specific -> generic so "WebBrowser" wins over "Network".
-  readonly property var categoryLabels: [
-    ["WebBrowser", "Web Browser"], ["Email", "Email Client"],
-    ["InstantMessaging", "Messenger"], ["Chat", "Messenger"],
-    ["VideoConference", "Video Call"], ["P2P", "Torrent Client"],
-    ["FileTransfer", "File Transfer"], ["TerminalEmulator", "Terminal"],
-    ["TextEditor", "Text Editor"], ["IDE", "Code Editor"],
-    ["FileManager", "File Manager"], ["Calculator", "Calculator"],
-    ["Monitor", "System Monitor"], ["WordProcessor", "Word Processor"],
-    ["Spreadsheet", "Spreadsheet"], ["Presentation", "Presentation"],
-    ["Office", "Office"], ["Music", "Music Player"], ["Player", "Media Player"],
-    ["Video", "Video"], ["Audio", "Audio"], ["AudioVideo", "Multimedia"],
-    ["RasterGraphics", "Image Editor"], ["VectorGraphics", "Vector Graphics"],
-    ["Photography", "Photography"], ["Viewer", "Viewer"], ["Graphics", "Graphics"],
-    ["Game", "Game"], ["Development", "Development"], ["Settings", "Settings"],
-    ["System", "System"], ["Network", "Network"], ["Utility", "Utility"],
-    ["Science", "Science"], ["Education", "Education"]
-  ]
-
+  // Label shown on the right: the app's own GenericName, else its first known category.
   function typeLabel(app) {
-    if (app.genericName && app.genericName.length > 0)
-      return app.genericName
-    if (!app.categories) return ""
-    for (var i = 0; i < root.categoryLabels.length; ++i) {
-      if (app.categories.indexOf(root.categoryLabels[i][0]) !== -1)
-        return root.categoryLabels[i][1]
-    }
+    if (app.genericName) return app.genericName
+    for (var key in types)
+      if (app.categories && app.categories.indexOf(key) !== -1) return types[key][0]
     return ""
   }
 
-  // 3 = name starts with query, 2 = name contains it, 1 = matches app type, 0 = no match
-  function matchScore(app, q) {
+  // Everything searchable about an app besides its name, lowercased.
+  function typeText(app) {
+    var t = [app.genericName, app.comment, app.id]
+    for (var i = 0; app.keywords && i < app.keywords.length; ++i) t.push(app.keywords[i])
+    for (var j = 0; app.categories && j < app.categories.length; ++j) {
+      var c = app.categories[j]
+      t.push(c)
+      if (types[c]) t = t.concat(types[c])
+    }
+    return t.join(" | ").toLowerCase()
+  }
+
+  // ---------- apps + search ----------
+  readonly property var apps: DesktopEntries.applications.values.filter(a => !a.noDisplay)
+
+  // built once per app list, not once per keystroke
+  readonly property var haystack: {
+    var m = {}
+    apps.forEach(a => m[a.id] = typeText(a))
+    return m
+  }
+
+  // true if the letters of q appear in s in order ("ffx" -> "firefox")
+  function fuzzy(q, s) {
+    var i = 0
+    for (var j = 0; j < s.length && i < q.length; ++j)
+      if (s[j] === q[i]) ++i
+    return i === q.length
+  }
+
+  function score(app, q) {
     var name = app.name.toLowerCase()
-    if (name.startsWith(q)) return 3
-    if (name.includes(q)) return 2
-    if (root.typeHaystack(app).includes(q)) return 1
+    if (name === q) return 100
+    if (name.startsWith(q)) return 90
+    if (name.split(/[\s\-_.]+/).some(w => w.startsWith(q))) return 80
+    if (name.includes(q)) return 70
+    if (haystack[app.id].includes(q)) return 50
+    if (q.length > 1 && fuzzy(q, name)) return 30
     return 0
   }
 
-  function searchApps(q) {
-    q = q.trim().toLowerCase()
+  // ---------- extras: calculator, shell, web ----------
+  function calc(q) {
+    var expr = q.replace(/^=/, "").replace(/\^/g, "**")
+    // digits and operators only, and at least one real operation
+    if (!/^[0-9+\-*\/().%\s]+$/.test(expr)) return null
+    if (!/[\d)]\s*[-+*\/%]+\s*[\d(.]/.test(expr)) return null
+    try {
+      var r = Function('"use strict"; return (' + expr + ')')()
+      return (typeof r === "number" && isFinite(r)) ? Math.round(r * 1e10) / 1e10 : null
+    } catch (e) {
+      return null
+    }
+  }
+
+  function appItem(app, recent) {
+    var label = typeLabel(app)
+    return {
+      id: app.id,
+      title: app.name,
+      sub: recent ? (label ? "Recent · " + label : "Recent") : label,
+      icon: app.icon,
+      run: () => app.execute()
+    }
+  }
+
+  function extraItem(title, sub, icon, cmd) {
+    return { id: "", title: title, sub: sub, icon: icon, run: () => Quickshell.execDetached(cmd) }
+  }
+
+  function webItem(s) {
+    var isLink = /^(https?:\/\/|www\.)\S+$/.test(s)
+    var url = !isLink ? "https://duckduckgo.com/?q=" + encodeURIComponent(s)
+                      : (s.startsWith("www.") ? "https://" + s : s)
+    return extraItem(isLink ? "Open " + s : 'Search the web for "' + s + '"',
+                     isLink ? "Link" : "Web search", "web-browser", ["xdg-open", url])
+  }
+
+  // ---------- the list the user sees ----------
+  property string query: ""
+  readonly property var results: buildResults(query)
+
+  function buildResults(raw) {
+    var q = raw.trim()
+
+    if (q.startsWith(">")) {
+      var cmd = q.slice(1).trim()
+      return cmd ? [extraItem("Run: " + cmd, "Shell command", "utilities-terminal", ["sh", "-c", cmd])] : []
+    }
+    if (q.startsWith("?")) {
+      var s = q.slice(1).trim()
+      return s ? [webItem(s)] : []
+    }
+
+    // no query: frequent apps first (the "Recent" ones), then everything else
+    if (q.length === 0) {
+      var sorted = apps.slice().sort(byUsage)
+      var frequent = sorted.filter(a => (counts[a.id] || 0) >= recentThreshold).slice(0, maxRecents)
+      var rest = sorted.filter(a => frequent.indexOf(a) === -1)
+      return frequent.map(a => appItem(a, true)).concat(rest.map(a => appItem(a, false)))
+    }
+
+    var out = []
+    var math = calc(q)
+    if (math !== null)
+      out.push({
+        id: "", title: "= " + math, sub: q + " · Enter to copy", icon: "accessories-calculator",
+        run: () => Quickshell.execDetached(["wl-copy", String(math)])
+      })
+
+    var lq = q.toLowerCase()
     var scored = []
-    for (var i = 0; i < apps.length; ++i) {
-      var sc = root.matchScore(apps[i], q)
-      if (sc > 0) scored.push({ app: apps[i], score: sc })
-    }
-    scored.sort(function(a, b) {
-      if (a.score !== b.score) return b.score - a.score
-      return root.launchCount(b.app.id) - root.launchCount(a.app.id)
+    apps.forEach(a => {
+      var sc = score(a, lq)
+      if (sc > 0) scored.push({ app: a, score: sc })
     })
-    return scored.map(x => x.app)
+    scored.sort((a, b) => (b.score - a.score) || byUsage(a.app, b.app))
+
+    return out.concat(scored.map(x => appItem(x.app, false))).concat([webItem(q)])
   }
 
-  property var recentApps: apps
-      .filter(a => root.launchCount(a.id) >= root.recentThreshold)
-      .sort((a, b) => root.launchCount(b.id) - root.launchCount(a.id))
-      .slice(0, root.maxRecents)
-
-  property bool showingRecents: query.length === 0 && recentApps.length > 0
-
-  property var displayApps: {
-    if (query.length > 0) {
-      return root.searchApps(query)
-    }
-
-    var ranked = root.rankedApps(apps)
-
-    // Recents are only the apps that reached 5 launches. They stay in
-    // their own section at the top; everything else remains below them.
-    if (recentApps.length === 0)
-      return ranked
-
-    var recentIds = recentApps.map(a => a.id)
-    var rest = ranked.filter(a => recentIds.indexOf(a.id) === -1)
-    return recentApps.concat(rest)
+  function launchAt(i) {
+    var item = results[i]
+    if (!item) return
+    if (item.id) recordLaunch(item.id)
+    item.run()
+    closeRequested()
   }
 
-  readonly property int visibleRows: Math.max(1, Math.min(displayApps.length, maxVisibleRows))
-  readonly property real listHeight: displayApps.length === 0
-      ? rowHeight
-      : visibleRows * rowHeight + (visibleRows - 1) * rowSpacing
-
-  implicitWidth: 480
-  implicitHeight: searchBarHeight + sectionSpacing + listHeight
-      + (showingRecents && recentApps.length > 0 ? headerLabel.implicitHeight + 4 : 0)
-
-  // background pill sizes itself instantly off implicitWidth/implicitHeight
-  // above (unaffected by this) — only the visible content fades in, and
-  // only once the pill's resize has had time to settle, so you don't see
-  // both animating on top of each other
-  opacity: 0
-  Behavior on opacity {
-    NumberAnimation { duration: 100; easing.type: Easing.OutQuad }
-  }
-
-  Timer {
-    interval: 120
-    running: true
-    repeat: false
-    onTriggered: root.opacity = 1
-  }
-
-  signal closeRequested()
-
-  function launch(entry) {
-    recordRecent(entry.id)
-    entry.execute()
-    root.closeRequested()
-  }
-
+  // ---------- UI ----------
   ColumnLayout {
     anchors.fill: parent
     spacing: root.sectionSpacing
 
-    // search bar — stays first/top always, never moves
+    opacity: root.ready ? 1 : 0
+    Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
+
+    // search bar
     Rectangle {
       Layout.fillWidth: true
       implicitHeight: root.searchBarHeight
       radius: 99
       color: "#000000"
+
       Text {
-        text: ""
-        color: "#e8eaed"
-        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.left: parent.left
+        anchors.leftMargin: 20
         anchors.verticalCenter: parent.verticalCenter
-        anchors.horizontalCenterOffset: -210
-        anchors.verticalCenterOffset: -5
-
-        Behavior on anchors.horizontalCenterOffset {
-            NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
-        }
-
-        font {
-            pixelSize: 18
-            weight: 600
-        }
+        text: "\uf002"
+        color: "#7d8087"
+        font.pixelSize: 16
       }
-
-      Rectangle {
-        implicitHeight: 0.6
-        radius: 16
-        implicitWidth: 450
-        anchors.horizontalCenter: parent.horizontalCenter
+    Rectangle {
+        implicitHeight: 2
+        implicitWidth: 460
         anchors.verticalCenter: parent.verticalCenter
-        anchors.verticalCenterOffset: 20
-      }
+        anchors.verticalCenterOffset: 26
+        opacity: 0.2
+    }
 
       TextInput {
         id: searchInput
         anchors.fill: parent
-        anchors.leftMargin: 40
-        anchors.rightMargin: 14
-        anchors.bottomMargin: 12
+        anchors.leftMargin: 50
+        anchors.rightMargin: 20
         verticalAlignment: TextInput.AlignVCenter
         focus: true
         color: "#e8eaed"
-        font {
-          family: "SF Pro Display"
-          pixelSize: 15
+        selectionColor: Colors.primary
+        font { family: "SF Pro Display"; pixelSize: 15 }
+
+        Text {
+          anchors.fill: parent
+          verticalAlignment: Text.AlignVCenter
+          visible: searchInput.text.length === 0
+          text: "Search apps   = math   > command   ? web"
+          color: "#5f6368"
+          font: searchInput.font
         }
 
         onTextChanged: {
           root.query = text
-          resultsList.currentIndex = 0
+          list.currentIndex = 0
+          list.positionViewAtBeginning()
         }
 
-        Keys.onEscapePressed: root.closeRequested()
-        Keys.onReturnPressed: {
-          var index = resultsList.currentIndex
-          if (index >= 0 && index < root.displayApps.length)
-            root.launch(root.displayApps[index])
-        }
-        Keys.onDownPressed: {
-          resultsList.incrementCurrentIndex()
-          resultsList.positionViewAtIndex(resultsList.currentIndex, ListView.Contain)
-        }
-        Keys.onUpPressed: {
-          resultsList.decrementCurrentIndex()
-          resultsList.positionViewAtIndex(resultsList.currentIndex, ListView.Contain)
+        Keys.onPressed: (e) => {
+          var ctrl = e.modifiers & Qt.ControlModifier
+          var alt = e.modifiers & Qt.AltModifier
+          var handled = true
+
+          if (e.key === Qt.Key_Escape) {
+            if (text.length > 0) clear()
+            else root.closeRequested()
+          }
+          else if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) root.launchAt(list.currentIndex)
+          else if (e.key === Qt.Key_Down || (ctrl && (e.key === Qt.Key_N || e.key === Qt.Key_J))) list.incrementCurrentIndex()
+          else if (e.key === Qt.Key_Up || (ctrl && (e.key === Qt.Key_P || e.key === Qt.Key_K))) list.decrementCurrentIndex()
+          else if (e.key === Qt.Key_PageDown) list.currentIndex = Math.min(list.count - 1, list.currentIndex + root.maxVisibleRows)
+          else if (e.key === Qt.Key_PageUp) list.currentIndex = Math.max(0, list.currentIndex - root.maxVisibleRows)
+          else if (e.key === Qt.Key_Tab) {
+            var item = root.results[list.currentIndex]
+            if (item && item.id) {
+              text = item.title
+              cursorPosition = text.length
+            }
+          }
+          else if (alt && e.key >= Qt.Key_1 && e.key <= Qt.Key_9)
+            root.launchAt(list.indexAt(0, list.contentY + 1) + (e.key - Qt.Key_1))
+          else handled = false
+
+          e.accepted = handled
         }
       }
     }
 
+    // results
     ListView {
-      id: resultsList
+      id: list
       Layout.fillWidth: true
       Layout.preferredHeight: root.listHeight
       clip: true
       spacing: root.rowSpacing
-      model: root.displayApps
+      model: root.results
       currentIndex: 0
+      keyNavigationWraps: true
       highlightMoveDuration: 100
+      onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
 
       Text {
         anchors.centerIn: parent
-        visible: resultsList.count === 0
-        text: "Nothing Found"
+        visible: list.count === 0
+        text: "Nothing found"
         color: "#666666"
         font.pixelSize: 14
       }
 
       delegate: Rectangle {
-        id: entryDelegate
+        id: row
         required property var modelData
         required property int index
 
-        width: resultsList.width
+        readonly property bool selected: ListView.isCurrentItem
+        // true once the icon is loaded (or failed, which also counts as done)
+        readonly property bool iconReady: icon.status !== Image.Loading
+        onIconReadyChanged: root.checkIcons()
+        Component.onCompleted: root.checkIcons()
+
+        width: list.width
         implicitHeight: root.rowHeight
         radius: 12
-        color: resultsList.currentIndex === index ? "#313036" : "transparent"
+        color: selected ? "#313036" : "transparent"
+        Behavior on color { ColorAnimation { duration: 100 } }
 
+        // accent bar on the selected row
         Rectangle {
-          implicitWidth: resultsList.currentIndex === index ? 4 : 0
-          implicitHeight: resultsList.currentIndex === index ? 20 : 0
           anchors.verticalCenter: parent.verticalCenter
+          width: row.selected ? 4 : 0
+          height: row.selected ? 20 : 0
+          radius: 2
           color: Colors.primary
-          radius: 16
-
-          Behavior on implicitWidth {
-            NumberAnimation { duration: 100; easing.type: Easing.OutCubic }
-          }
-
-          Behavior on implicitHeight {
-            NumberAnimation { duration: 100 }
-          }
-        }
-
-        Behavior on color {
-          ColorAnimation { duration: 100 }
+          Behavior on width { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
+          Behavior on height { NumberAnimation { duration: 100 } }
         }
 
         RowLayout {
           anchors.fill: parent
-          anchors.leftMargin: 10
-          anchors.rightMargin: 10
+          anchors.leftMargin: 12
+          anchors.rightMargin: 12
           spacing: 10
 
           IconImage {
+            id: icon
             implicitWidth: 24
             implicitHeight: 24
-            source: Quickshell.iconPath(entryDelegate.modelData.icon, "application-x-executable")
+            source: Quickshell.iconPath(row.modelData.icon, "application-x-executable")
           }
 
           Text {
             Layout.fillWidth: true
-            text: entryDelegate.modelData.name
+            text: row.modelData.title
             color: "#e8eaed"
             elide: Text.ElideRight
-            font {
-              family: "SF Pro Display"
-              pixelSize: 14
-            }
+            font { family: "SF Pro Display"; pixelSize: 14 }
           }
 
           Text {
-            text: root.typeLabel(entryDelegate.modelData)
             visible: text.length > 0
+            text: row.modelData.sub
             color: "#7d8087"
             elide: Text.ElideRight
-            Layout.maximumWidth: 150
+            Layout.maximumWidth: 170
             horizontalAlignment: Text.AlignRight
-            font {
-              family: "SF Pro Display"
-              pixelSize: 12
-            }
+            font { family: "SF Pro Display"; pixelSize: 12 }
           }
         }
 
         MouseArea {
           anchors.fill: parent
           hoverEnabled: true
-          onEntered: resultsList.currentIndex = entryDelegate.index
-          onClicked: root.launch(entryDelegate.modelData)
+          // positionChanged, not entered: scrolling under a still mouse won't steal the selection
+          onPositionChanged: list.currentIndex = row.index
+          onClicked: root.launchAt(row.index)
         }
       }
     }
