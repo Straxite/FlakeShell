@@ -44,7 +44,7 @@ hl.bind("CTRL + SHIFT + ESCAPE", hl.dsp.exec_cmd("kitty --class btop -e btop"))
 hl.bind(alt .. " + TAB", function()
     hl.plugin.scrolloverview.overview("toggle all")
 end)
-hl.bind(mainMod .. " +L", hl.dsp.exec_cmd("~/.local/share/quickshell-lockscreen/lock.sh"))
+
 
 -- Move windows
 hl.bind("ALT + UP", hl.dsp.window.move( { direction = "up" } ))
@@ -77,6 +77,7 @@ hl.bind(mainMod .. " + R", hl.dsp.exec_cmd("qs kill | qs"))
 hl.bind(mainMod .. " + W", hl.dsp.exec_cmd("qs ipc call wallpaper toggle"))
 hl.bind("CTRL + SUPER + R", hl.dsp.exec_cmd("qs ipc call capture toggle"))
 hl.bind(mainMod .. " + A", hl.dsp.exec_cmd("qs ipc call notifications toggle"))
+hl.bind(mainMod .. " +L", hl.dsp.exec_cmd("qs ipc call lock lock"))
 
 -- Switch workspaces with mainMod + [0-9]
 -- Move active window to a workspace with mainMod + SHIFT + [0-9]
