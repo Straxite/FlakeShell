@@ -1,18 +1,3 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// Pill.qml: the whole shell is this one pill at the top of the screen.
-//
-// The pill is a black rounded rectangle that changes size depending on what it
-// is showing. Layout of this file, top to bottom:
-//   1. imports
-//   2. state (which "mode" the pill is in) + volume / brightness logic
-//   3. the window itself (a transparent layer-shell surface covering the top)
-//   4. IPC handlers (keybinds talk to the shell through these)
-//   5. the pill Rectangle: its size, shape, and everything drawn inside it
-//
-// Modes, in priority order for sizing:
-//   wallpaper strip > theme > panel (control/capture/clipboard/power) > notifications > calendar > launcher > menu
-//   > volume/brightness popup > hover > idle
-// ─────────────────────────────────────────────────────────────────────────────
 import Quickshell
 import QtQuick
 import Quickshell.Wayland          // layer-shell (WlrLayershell) + keyboard focus
@@ -32,38 +17,24 @@ PanelWindow {
   property color bg1: Colors.scrim    // pill background
 
   // ───── MODES: each is a simple on/off switch ─────
-  // LAUNCHER: the keybind flips it, Escape/launching an app clears it.
   property bool launcherActive: false
-  // MENU: LayoutMenu (Wallpaper / Theme). Flipped by `ipc call menu toggle`.
   property bool menuActive: false
-  // WALLPAPER: the wallpaper strip. Flipped by `ipc call wallpaper toggle`.
   property bool wallpaperActive: false
-  // THEME: the theme list. Flipped by `ipc call theme toggle`.
   property bool themeActive: false
-  // CALENDAR: opens when you click the date (Date.qml). Also `ipc call calendar toggle`.
   property bool calendarActive: false
-  // NOTIFICATIONS: the notification list. Flipped by `ipc call notifications toggle`.
   property bool notifActive: false
 
-  // TOAST: the pill briefly shows the newest notification (not a mode, it never opens over one).
   property var toastNotif: null
   property bool showToast: false
   property int toastDuration: 3000   // ms the toast stays before the pill goes back to normal
 
-  // PANELS: control center / capture / clipboard / power. Which one is open lives in
-  // ShellState.panel ("" = none), because the panels themselves close it (Escape, action done).
-  //   panelWanted = what ShellState says right now (drives the pill SIZE, so it shrinks right away)
-  //   shownPanel  = the panel actually on screen (lags a moment so it can fade out / swap)
-  //   panelActive = a panel is on screen (hides the clock/OSDs, keeps keyboard focus)
   readonly property bool panelWanted: ShellState.panel !== ""
   property string shownPanel: ""
   property bool panelFadeIn: false      // target for the panel's fade (true = visible)
   readonly property bool panelActive: shownPanel !== ""
 
-  // true while any big mode owns the pill (used to hide OSDs / idle content)
   readonly property bool anyModeOpen: launcherActive || menuActive || wallpaperActive || themeActive || calendarActive || notifActive || panelActive
 
-  // Switch off every non-panel mode (the IPC handlers below use this before opening a panel).
   function closeBigModes() {
     launcherActive = false
     menuActive = false
@@ -73,14 +44,12 @@ PanelWindow {
     notifActive = false
   }
 
-  // Called when the date is clicked.
   function openCalendar() {
     ShellState.close()
     closeBigModes()
     calendarActive = true
   }
 
-  // WORKSPACES: true for 1s after the focused workspace changes (see rootTimer below).
   property bool showWorkspaces: pill.rootTimer.running
 
   // Open / close / swap a panel with a fade. Runs whenever ShellState.panel changes.
@@ -110,10 +79,6 @@ PanelWindow {
     onTriggered: { root.shownPanel = ShellState.panel; root.panelFadeIn = true }
   }
 
-  // ───── NOTIFICATIONS ─────
-  // This is the notification daemon. `tracked = true` keeps a notification in
-  // trackedNotifications until you dismiss it, which is what the panel lists.
-  // (Stop swaync first: only one daemon can own org.freedesktop.Notifications.)
   NotificationServer {
     id: notifServer
     bodySupported: true
@@ -126,7 +91,6 @@ PanelWindow {
     }
   }
 
-  // Show the newest notification in the pill and (re)start its hide timer.
   function pokeToast(n) {
     if (anyModeOpen) return            // panel/launcher/etc. already own the pill
     toastNotif = n
@@ -150,7 +114,6 @@ PanelWindow {
     onTriggered: root.showToast = false
   }
 
-  // Hovering the pill pauses the toast; moving away gives it a fresh countdown.
   Connections {
     target: pill
     function onIsHoveredChanged() {
@@ -160,23 +123,18 @@ PanelWindow {
     }
   }
 
-  // If the app (or you) closes the notification, drop the toast right away.
   Connections {
     target: root.toastNotif
     function onClosed() { root.showToast = false }
   }
 
-  // ───── VOLUME ─────
-  // The pill shows the volume bar for 1.5s after any volume/mute change.
   readonly property var sink: Pipewire.defaultAudioSink          // current default output device
   readonly property real vol: sink?.audio?.volume ?? 0           // 0..1 (can go above 1)
   readonly property bool muted: sink?.audio?.muted ?? false
   property bool showVolume: false
 
-  // Without this tracker Pipewire doesn't keep the sink's volume up to date.
   PwObjectTracker { objects: [root.sink] }
 
-  // Any volume or mute change pops the OSD.
   Connections {
     target: root.sink?.audio ?? null
     function onVolumeChanged() { root.pokeVolume() }
@@ -197,8 +155,6 @@ PanelWindow {
     onTriggered: root.showVolume = false
   }
 
-  // ───── BRIGHTNESS ─────
-  // Same idea. Polls brightnessctl and pops the pill when the value changes.
   property real brightness: 0
   property bool brightnessReady: false   // false until the first read (so startup doesn't pop up)
   property bool showBrightness: false
@@ -211,7 +167,6 @@ PanelWindow {
     }
   }
 
-  // Re-run brightnessctl every 250ms (skipped if the previous run hasn't finished).
   Timer {
     interval: 250
     running: true
@@ -219,7 +174,6 @@ PanelWindow {
     onTriggered: if (!brightnessProc.running) brightnessProc.running = true
   }
 
-  // brightnessctl -m prints: device,class,current,percent%,max
   function updateBrightness(line) {
     const pct = parseInt(line.split(",")[3]) / 100
     if (isNaN(pct)) return
@@ -240,24 +194,17 @@ PanelWindow {
     onTriggered: root.showBrightness = false
   }
 
-  // ───── THE WINDOW ─────
-  // A transparent strip across the top of the screen. The visible pill is drawn
-  // inside it and the `mask` below makes everything else click-through.
   color: "transparent"
   anchors { top: true; left: true; right: true }
 
-  // Window is tall enough for the biggest the pill can get (the control panel); it is invisible anyway.
   implicitHeight: pillHeight * 20
 
   WlrLayershell.layer: WlrLayer.Top
 
-  // The window only takes keyboard input while a keyboard-driven mode is open,
-  // otherwise typing would go to the pill instead of your apps.
   WlrLayershell.keyboardFocus: root.anyModeOpen
       ? WlrKeyboardFocus.OnDemand
       : WlrKeyboardFocus.None
 
-  // Click anywhere outside the pill while a mode is open -> close that mode.
   HyprlandFocusGrab {
     windows: [ root ]
     active: root.launcherActive
@@ -296,12 +243,8 @@ PanelWindow {
     onCleared: ShellState.close()
   }
 
-  // Reserve this much space at the top so windows don't open underneath the pill.
   exclusiveZone: pillHeight
 
-  // ───── IPC (keybinds) ─────
-  // Hyprland binds call these, e.g.  bind = SUPER, W, exec, qs ipc call wallpaper toggle
-  // Opening one mode closes the others so they never overlap.
   IpcHandler {
     target: "launcher"
 
@@ -428,19 +371,15 @@ PanelWindow {
   Rectangle {
     id: pill
 
-    // Expose the Timer as a real property so `root` can reach it.
-    // Without this alias, only code inside this Rectangle could see `rootTimer`.
     property alias rootTimer: rootTimer
 
     HoverHandler { id: hover }
     property bool isHovered: hover.hovered
 
-    // "Open" pills get rounder bottom corners (see the radius lines below).
     property bool isOpen: isHovered || root.anyModeOpen || root.showToast
-    // (unused right now, safe to delete or use later)
+
     property bool isShowing: isHovered || root.showWorkspaces
 
-    // HEIGHT: first matching line wins, so order = priority.
     implicitHeight: {
       if (root.wallpaperActive && wallLoader.item)       // wallpaper strip: its own height + padding
         return wallLoader.item.implicitHeight + 20
@@ -465,7 +404,6 @@ PanelWindow {
       return isHovered ? root.pillHeight * 5 : root.pillHeight   // hover expands, else idle
     }
 
-    // WIDTH: same idea, first match wins.
     implicitWidth: root.wallpaperActive ? root.pillHeight * 24     // wide: the strip needs room for 9 thumbs
                 : root.themeActive ? root.pillHeight * 24
                 : (root.panelWanted && panelLoader.item) ? panelLoader.item.implicitWidth + 20   // panels size themselves
@@ -479,8 +417,6 @@ PanelWindow {
                 : root.showWorkspaces           ? root.pillHeight * 4
                 :                       root.pillHeight * 3        // idle
 
-    // The pill hangs from the top edge, so the top corners stay square (0) and
-    // only the bottom corners are rounded. Open = twice as round.
     topLeftRadius: isOpen ? root.radius * 0 : root.radius * 0
     topRightRadius: isOpen ? root.radius * 0 : root.radius * 0
     bottomRightRadius: isOpen ? root.radius * 2 : root.radius
@@ -498,8 +434,6 @@ PanelWindow {
       NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
     }
 
-    // The two little concave "ears" on each side of the pill's top, so the pill
-    // looks like it flows out of the screen edge.
     ConcaveCurves {
       anchors.top: parent.top
       anchors.right: parent.left    // left of the pill
@@ -525,11 +459,9 @@ PanelWindow {
 
     color: root.bg1
 
-    // Aligns to the top center so expansion happens downward and outwards
     anchors.top: parent.top
     anchors.horizontalCenter: parent.horizontalCenter
 
-    // Smoothly animate every size change (this is what makes it "expand").
     Behavior on implicitHeight {
       NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
     }
@@ -538,15 +470,12 @@ PanelWindow {
       NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
     }
 
-    // How long the workspace switcher stays visible after a workspace change.
     Timer {
       id: rootTimer
       interval: 1000
       running: false
       repeat: false
     }
-
-    // ───── CONTENT: Loaders only create their content while the mode is on ─────
 
     // App launcher
     Loader {
@@ -585,8 +514,6 @@ PanelWindow {
       sourceComponent: WallpaperPicker {}
     }
 
-    // Calendar (components/Calendar.qml), opened by clicking the date (DateWidget.qml).
-    // Same trick as the panels: a clipped box, so the content fades out cleanly while the pill shrinks.
     Item {
       anchors.fill: parent
       anchors.margins: 10
@@ -608,8 +535,6 @@ PanelWindow {
       }
     }
 
-    // Notifications (components/NotificationPanel.qml).
-    // Same clipped-box trick as the calendar: the panel keeps its own size, centered.
     Item {
       anchors.fill: parent
       anchors.margins: 10
@@ -634,10 +559,6 @@ PanelWindow {
     }
     Component { id: notifPanel; NotificationPanel { notifications: notifServer.trackedNotifications } }
 
-    // Panels (components/ControlPanel, CapturePanel, ClipboardPanel, PowerPanel).
-    // The panel keeps its own fixed size, centered; the pill grows/shrinks around it and
-    // `panelClip` trims anything sticking out mid-animation. That means no re-layout jitter.
-    // Fade + small slide in/out is driven by root.panelFadeIn.
     Item {
       id: panelClip
       anchors.fill: parent
@@ -692,8 +613,6 @@ PanelWindow {
       }
     }
 
-    // Each of these components emits `closeRequested()` (Escape, app launched, ...).
-    // These hooks turn that signal into "switch my mode off".
     Connections {
       target: launcherLoader.item
       function onCloseRequested() { root.launcherActive = false }
@@ -737,8 +656,6 @@ PanelWindow {
       }
     }
 
-    // ───── OSDs ─────
-    // Hidden while any bigger mode is showing.
     VolumeOSD {
       anchors.centerIn: parent
       vol: root.vol
@@ -760,8 +677,6 @@ PanelWindow {
       }
     }
 
-    // ───── IDLE CONTENT ─────
-    // The normal clock / date / battery, hidden whenever anything else is using the pill.
     DateWidget {
       hovered: pill.isHovered
       visible: !root.anyModeOpen && !root.showWorkspaces && !root.showVolume && !root.showBrightness && !root.showToast
