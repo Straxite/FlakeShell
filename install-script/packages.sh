@@ -58,6 +58,7 @@ PACMAN_PACKAGES=(
     otf-font-awesome
     zed
     nemo-fileroller
+    wf-recorder
 )
 
 AUR_PACKAGES=(
