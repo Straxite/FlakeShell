@@ -29,51 +29,54 @@ We have an Install Script as well guys! Now no more manual work..
 ## Shell Bindings
 
 ```
-App Launcher:         Alt + Space
-Layout Menu:          Super + Space
-Wallpaper Switcher:   Super + W
-Screen Capture Menu:  Super + Ctrl + R
-Power Menu:           Super + M
-Control Panel:        Super + Period
-Notification Panel:   Super + A
-ClipBoard:            Alt + V
+App Launcher:                Alt + Space
+Layout Menu:                 Super + Space
+Wallpaper Switcher:          Super + W
+Screen Capture Menu:         Super + Ctrl + R
+Power Menu:                  Super + M
+Control Panel:               Super + Period
+Notification Panel:          Super + A
+ClipBoard:                   Alt + V
 ```
 
 ## Common Bindings
 
 ```
-Terminal:             Alt + Q
-Close Window:         Super + Q
-File Manager:         Super + E
-Float Window:         Super + V
-Full screen Window:   Alt + V
-Screenshot:           Super + Print
-Brave Browser:        Super + H
-Lutgen Studio:        Super + C
-Yazi File Manager:    Super + Y
-Task Manager:         Ctrl + Shift + Escape
-Scroll Overview:      Alt + Tab
-Lock Screen:          Super + L
+Terminal:                    Alt + Q
+Close Window:                Super + Q
+File Manager:                Super + E
+Float Window:                Super + V
+Full screen Window:          Alt + V
+Screenshot:                  Super + Print
+Brave Browser:               Super + H
+Lutgen Studio:               Super + C
+Yazi File Manager:           Super + Y
+Task Manager:                Ctrl + Shift + Escape
+Scroll Overview:             Alt + Tab
+Lock Screen:                 Super + L
 
-Volume Increase: Ctrl + Up
-Volume Decrease: Ctrl + Down
+Volume Increase:             Ctrl + Up
+Volume Decrease:             Ctrl + Down
 
-Brightness Increase: Shift + Up
-Brightness Decrease: Shift + DOwn
+Brightness Increase:         Shift + Up
+Brightness Decrease:         Shift + DOwn
 ```
 
 ## Window Bindings
 
 ```
-Move Window Left: Alt + Left
-Move Window Right: Alt + Right
-Move Window Up: Alt + Up
-Move Window Down: Alt + Down
+Move Window Left:            Alt + Left
+Move Window Right:           Alt + Right
+Move Window Up:              Alt + Up
+Move Window Down:            Alt + Down
 
-Move Window Focus to Left: Super + Left
-Move Window Focus to Right: Super + Right
-Move Window Focus to Up: Super + Up 
-Move Window Focus to Down: Super + Down
+Move Window Focus to Left:   Super + Left
+Move Window Focus to Right:  Super + Right
+Move Window Focus to Up:     Super + Up 
+Move Window Focus to Down:   Super + Down
+
+Special Workspace:           Super + S
+Move to Special Workspace:   Shift + Super + S
 ```
 
 ## Installation  
