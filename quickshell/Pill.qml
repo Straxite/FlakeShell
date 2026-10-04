@@ -414,15 +414,23 @@ PanelWindow {
       anchors.top: parent.top
       anchors.right: parent.left    // left of the pill
       mirrored: true
-      radius: root.radius
+      radius: pill.isHovered ? 32 : (pill.isOpen ? 32 : root.radius)
       color: root.bg1
+
+      Behavior on radius {
+        NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+      }
     }
 
     ConcaveCurves {
       anchors.top: parent.top
       anchors.left: parent.right    // right of the pill
-      radius: root.radius
+      radius: pill.isHovered ? 32 : (pill.isOpen ? 32 : root.radius)
       color: root.bg1
+
+      Behavior on radius {
+        NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+      }
     }
 
     color: root.bg1

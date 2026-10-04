@@ -137,7 +137,7 @@ FocusScope {
 
                         Rectangle {
                             anchors.fill: parent
-                            radius: Style.radiusSmall
+                            radius: 99
                             color: kindPointer.containsMouse ? Style.bg1 : "transparent"
                             border.width: kindButton.activeFocus ? 1 : 0
                             border.color: root.accent
@@ -184,7 +184,7 @@ FocusScope {
             Rectangle {
                 width: root.px(105)
                 height: parent.height
-                radius: Style.radius
+                radius: 32
                 color: Style.bg0
                 border.width: 1
                 border.color: Qt.rgba(0.83, 0.78, 0.67, 0.06)
@@ -232,7 +232,7 @@ FocusScope {
 
                             Rectangle {
                                 anchors.fill: parent
-                                radius: Style.radiusSmall
+                                radius: 32
                                 color: targetButton.selected ? Style.primaryContainer : (targetPointer.containsMouse ? Style.bg1 : "transparent")
                                 border.width: targetButton.activeFocus ? 1 : 0
                                 border.color: root.accent
@@ -318,7 +318,7 @@ FocusScope {
 
                             Rectangle {
                                 anchors.fill: parent
-                                radius: Style.radiusSmall
+                                radius: 32
                                 color: recordPointer.containsMouse ? Style.bg1 : "transparent"
                                 border.width: recordControl.activeFocus ? 1 : 0
                                 border.color: Style.red
@@ -533,7 +533,7 @@ FocusScope {
 
             Rectangle {
                 anchors.fill: parent
-                radius: Style.radiusSmall
+                radius: 24
                 color: actionPointer.containsMouse ? Style.bg1 : Style.bg0
                 border.width: parent.activeFocus ? 1 : 0
                 border.color: root.accent
