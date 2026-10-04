@@ -1,8 +1,0 @@
-pragma Singleton
-import QtQuick
-
-QtObject {
-    readonly property color accent: "{{colors.primary.default.hex}}"
-    readonly property color bg: "{{colors.surface.default.hex}}"
-    readonly property color track: "{{colors.surface_container_high.default.hex}}"
-}
