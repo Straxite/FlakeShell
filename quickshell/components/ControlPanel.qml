@@ -8,6 +8,7 @@ import Quickshell.Services.Pipewire
 import Quickshell.Services.SystemTray
 import Quickshell.Services.UPower
 import Quickshell.Widgets
+import qs
 
 FocusScope {
     id: root
@@ -858,7 +859,7 @@ FocusScope {
                     anchors.bottom: parent.bottom
                     anchors.leftMargin: 10
                     anchors.rightMargin: 8
-                    color: Style.foreground
+                    color: Colors.primary
                     font.family: Style.fontFamily
                     font.pixelSize: 10
                     verticalAlignment: TextInput.AlignVCenter
@@ -1089,7 +1090,7 @@ FocusScope {
 
             width: parent.width
             height: 118
-            radius: Style.radius
+            radius: 24
             clip: true
             enabled: root.expandedSection === ""
 
@@ -1188,8 +1189,8 @@ FocusScope {
                     height: 42
                     icon: root.player && root.player.isPlaying ? "󰏤" : "󰐊"
                     accessibleName: root.player && root.player.isPlaying ? "Pause" : "Play"
-                    backgroundColor: Style.foreground
-                    foregroundColor: Style.bgDim
+                    backgroundColor: Colors.onSurface
+                    foregroundColor: Colors.primary
                     onClicked: {
                         if (root.player && root.player.canTogglePlaying)
                             root.player.togglePlaying();
@@ -1224,7 +1225,7 @@ FocusScope {
                 ShellText {
                     anchors.verticalCenter: parent.verticalCenter
                     text: root.player ? root.formatDuration(root.player.position) : "0:00"
-                    color: Style.muted
+                    color: Colors.onSurface
                     font.pixelSize: 8
                 }
 
@@ -1239,7 +1240,7 @@ FocusScope {
                         width: parent.width * (root.player && root.player.length > 0 ? Math.min(1, root.player.position / root.player.length) : 0)
                         height: parent.height
                         radius: parent.radius
-                        color: Style.foreground
+                        color: Colors.primary
                     }
 
                     MouseArea {
@@ -1256,23 +1257,23 @@ FocusScope {
                 ShellText {
                     anchors.verticalCenter: parent.verticalCenter
                     text: root.player ? root.formatDuration(root.player.length) : "0:00"
-                    color: Style.muted
+                    color: Colors.onSurface
                     font.pixelSize: 8
                 }
 
             }
 
             gradient: Gradient {
-                orientation: Gradient.Horizontal
+                orientation: Gradient.Vertical
 
                 GradientStop {
                     position: 0
-                    color: Style.primaryContainer
+                    color: Colors.primaryContainer
                 }
 
                 GradientStop {
                     position: 1
-                    color: Style.bgYellow
+                    color: Colors.tertiary
                 }
 
             }
