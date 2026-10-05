@@ -3,65 +3,94 @@
 
 source "${BASH_SOURCE[0]%/*}/common.sh"
 
-component_banner "       Dotfiles Deployment"
+# ═════════════════════════════════ CONFIGURE ═════════════════════════════════
 
-[[ -d "$REPO_DIR" ]] || { log_err "Repo not found at $REPO_DIR"; exit 1; }
+# Folders copied from <repo>/<name>  →  ~/.config/<name>
+CONFIG_FOLDERS=(
+    backgrounds
+    cava
+    colorschemes
+    gtk-3.0
+    gtk-4.0
+    hypr
+    kitty
+    matugen
+    nvim
+    rofi
+    swaync
+    waybar
+    wlogout
+    fastfetch
+    quickshell
+    quickshell-test
+)
 
-# deploy <src> <dest> [sudo]   — copies dir contents (or a single file)
+# Folder copied from <repo>/<name>  →  ~/.local
+LOCAL_FOLDER=".local"
+
+# Files copied from <repo>/<file>  →  ~/<file>
+HOME_FILES=(
+    .zshrc
+    .p10k.zsh
+)
+
+# System folders ("repo-folder|destination") — needs sudo
+SYSTEM_FOLDERS=(
+    "etc|/etc"
+    "usr|/usr"
+)
+
+# ═════════════════════════════════════════════════════════════════════════════
+
+component_banner "Dotfiles Deployment"
+[[ -d "$REPO_DIR" ]] || { log_err "Repo not found at $REPO_DIR"; echo "      git clone <your-repo-url> ~/$FLAKE_REPO_NAME"; finish "Dotfiles aborted"; }
+
+DEPLOYED=0; MISSING=0
+
+# deploy <src> <dest> [sudo]
 deploy() {
-    local src="$1" dest="$2" s="${3:-}" name
-    name="$(basename "$src")"
+    local src="$1" dest="$2" s="${3:-}" name; name="$(basename "$src")"
     if [[ -d "$src" ]]; then
         $s mkdir -p "$dest" && $s cp -rf "$src/." "$dest/"
     elif [[ -f "$src" ]]; then
         $s mkdir -p "$(dirname "$dest")" && $s cp -f "$src" "$dest"
     else
-        log_skip "$name (not found in repo)"; return
+        printf '  %s!%s  %s%s  (not in repo)%s\n' "$GOLD" "$RESET" "$SLATE" "$name" "$RESET"
+        MISSING=$((MISSING + 1)); return
     fi
-    log_ok "$name  →  $dest${s:+ ${YELLOW}(sudo)${RESET}}"
+    printf '  %s✓%s  %-18s %s→%s %s%s%s\n' "$AQUA" "$RESET" "$name" "$SLATE" "$RESET" "$ICE" "$dest" "$RESET"
+    DEPLOYED=$((DEPLOYED + 1))
 }
 
 # ── ~/.config ─────────────────────────────────────────────────────────────────
-CONFIG_FOLDERS=(
-    backgrounds cava colorschemes gtk-3.0 gtk-4.0 hypr kitty matugen nvim
-    rofi swaync waybar wlogout fastfetch quickshell quickshell-test
-)
-
-header "Deploying ~/.config folders"
-if confirm "Copy contents for .config?"; then
+section "~/.config"
+if confirm "Copy ${#CONFIG_FOLDERS[@]} config folders?"; then
     for f in "${CONFIG_FOLDERS[@]}"; do deploy "$REPO_DIR/$f" "$CONFIG_DIR/$f"; done
-else
-    log_skip ".config"
-fi
+else log_skip ".config skipped"; fi
 
 # ── ~/.local ──────────────────────────────────────────────────────────────────
-header "Deploying ~/.local"
-if confirm "Copy contents for .local?"; then
-    deploy "$REPO_DIR/.local" "$LOCAL_DIR"
-else
-    log_skip ".local"
-fi
+section "~/.local"
+if confirm "Copy $LOCAL_FOLDER?"; then deploy "$REPO_DIR/$LOCAL_FOLDER" "$LOCAL_DIR"
+else log_skip ".local skipped"; fi
 
 # ── Home dotfiles ─────────────────────────────────────────────────────────────
-header "Deploying home dotfiles"
-if confirm "Copy home dotfiles (.zshrc, .p10k.zsh)?"; then
-    deploy "$REPO_DIR/.p10k.zsh" "$HOME/.p10k.zsh"
-    deploy "$REPO_DIR/.zshrc"    "$HOME/.zshrc"
-else
-    log_skip "home dotfiles"
-fi
+section "Home dotfiles"
+if confirm "Copy ${HOME_FILES[*]}?"; then
+    for f in "${HOME_FILES[@]}"; do deploy "$REPO_DIR/$f" "$HOME/$f"; done
+else log_skip "home dotfiles skipped"; fi
 
 # ── System files ──────────────────────────────────────────────────────────────
-header "Deploying system files (requires sudo)"
-if [[ -d "$REPO_DIR/etc" || -d "$REPO_DIR/usr" ]]; then
-    if confirm "Copy contents for / (etc, usr)?"; then
-        deploy "$REPO_DIR/etc" /etc sudo
-        deploy "$REPO_DIR/usr" /usr sudo
-    else
-        log_skip "system files"
-    fi
-else
-    log_skip "no etc/ or usr/ in repo"
-fi
+section "System files"
+has_sys=false
+for e in "${SYSTEM_FOLDERS[@]}"; do [[ -d "$REPO_DIR/${e%%|*}" ]] && has_sys=true; done
+if $has_sys; then
+    if confirm "Copy system folders (needs sudo)?"; then
+        ensure_sudo
+        for e in "${SYSTEM_FOLDERS[@]}"; do deploy "$REPO_DIR/${e%%|*}" "${e##*|}" sudo; done
+    else log_skip "system files skipped"; fi
+else log_skip "no system folders in repo"; fi
 
-echo -e "\n${BOLD}${GREEN}==> Dotfiles deployed!${RESET}\n"
+echo; hr
+log_info "$DEPLOYED deployed"
+(( MISSING > 0 )) && { log_warn "$MISSING not found in repo (skipped)"; }
+finish "Dotfiles deployed"
