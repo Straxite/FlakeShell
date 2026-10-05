@@ -19,7 +19,7 @@ WlSessionLock {
     property string buffer: ""
     property bool failed: false
     property bool checking: false
-    readonly property bool typing: input.text.length > 0 || checking
+    readonly property bool typing: input.text.length > 0 || checking || shake.running
 
     PamContext {
       id: pam
@@ -190,7 +190,7 @@ WlSessionLock {
 
         Item {
           width: 300
-          height: 36
+          height: 40
           anchors.horizontalCenter: parent.horizontalCenter
 
           Text {
@@ -206,46 +206,27 @@ WlSessionLock {
             }
           }
 
-          Item {
-            id: area
-            anchors.fill: parent
-            opacity: surface.checking ? 0.55 : 1
-
-            property int alive: 0
-            property int tick: 0
-            readonly property real gap: Math.min(20, (width - 20) / Math.max(1, alive))
+          Rectangle {
+            id: field
+            width: 260
+            height: 40
+            radius: 20
+            anchors.centerIn: parent
+            color: "#47ffffff"
+            border.width: 1
+            border.color: "#33ffffff"
+            opacity: surface.typing ? 1 : 0
+            scale: surface.typing ? 1 : 0.7
 
             Behavior on opacity {
-              NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+              NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+            }
+
+            Behavior on scale {
+              NumberAnimation { duration: 320; easing.type: Easing.OutBack; easing.overshoot: 1.6 }
             }
 
             transform: Translate { id: shiftT }
-
-            ListModel { id: dotModel }
-
-            function slotOf(i) {
-              let c = 0
-              for (let j = 0; j < i && j < dotModel.count; j++)
-                if (!dotModel.get(j).dying) c++
-              return c
-            }
-
-            function sync(n) {
-              while (alive < n) {
-                dotModel.append({ dying: false })
-                alive++
-              }
-              while (alive > n) {
-                for (let i = dotModel.count - 1; i >= 0; i--) {
-                  if (!dotModel.get(i).dying) {
-                    dotModel.setProperty(i, "dying", true)
-                    break
-                  }
-                }
-                alive--
-              }
-              tick++
-            }
 
             SequentialAnimation {
               id: shake
@@ -256,53 +237,97 @@ WlSessionLock {
               NumberAnimation { target: shiftT; property: "x"; to: 0; duration: 50 }
             }
 
-            Repeater {
-              model: dotModel
+            Item {
+              id: area
+              anchors.fill: parent
+              anchors.leftMargin: 16
+              anchors.rightMargin: 16
+              clip: true
+              opacity: surface.checking ? 0.55 : 1
 
-              Rectangle {
-                id: dot
+              property int alive: 0
+              property int tick: 0
+              readonly property real gap: 18
+              readonly property real startX: alive * gap <= width ? (width - alive * gap) / 2 : width - alive * gap
 
-                required property int index
-                required property bool dying
+              Behavior on opacity {
+                NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+              }
 
-                property real p: 0
-                readonly property int slot: { area.tick; return area.slotOf(index) }
+              ListModel { id: dotModel }
 
-                width: 11
-                height: 11
-                radius: 6
-                color: "white"
-                opacity: Math.min(1, p)
-                scale: p
-                x: area.width / 2 + (slot - (area.alive - 1) / 2) * area.gap - width / 2
-                y: (area.height - height) / 2 + (1 - Math.min(1, p)) * 8
+              function slotOf(i) {
+                let c = 0
+                for (let j = 0; j < i && j < dotModel.count; j++)
+                  if (!dotModel.get(j).dying) c++
+                return c
+              }
 
-                Behavior on x {
-                  NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+              function sync(n) {
+                while (alive < n) {
+                  dotModel.append({ dying: false })
+                  alive++
                 }
-
-                Component.onCompleted: appear.start()
-
-                onDyingChanged: if (dying) {
-                  appear.stop()
-                  vanish.start()
+                while (alive > n) {
+                  for (let i = dotModel.count - 1; i >= 0; i--) {
+                    if (!dotModel.get(i).dying) {
+                      dotModel.setProperty(i, "dying", true)
+                      break
+                    }
+                  }
+                  alive--
                 }
+                tick++
+              }
 
-                NumberAnimation {
-                  id: appear
-                  target: dot
-                  property: "p"
-                  to: 1
-                  duration: 300
-                  easing.type: Easing.OutBack
-                  easing.overshoot: 2.2
-                }
+              Repeater {
+                model: dotModel
 
-                SequentialAnimation {
-                  id: vanish
-                  PauseAnimation { duration: Math.min(dot.index, 10) * 22 }
-                  NumberAnimation { target: dot; property: "p"; to: 0; duration: 170; easing.type: Easing.InCubic }
-                  ScriptAction { script: dotModel.remove(dot.index) }
+                Rectangle {
+                  id: dot
+
+                  required property int index
+                  required property bool dying
+
+                  property real p: 0
+                  readonly property int slot: { area.tick; return area.slotOf(index) }
+
+                  width: 11
+                  height: 11
+                  radius: 6
+                  color: "white"
+                  opacity: Math.min(1, p) * Math.max(0, Math.min(1, (x + 6) / 14))
+                  scale: p
+                  x: area.startX + slot * area.gap + (area.gap - width) / 2
+                  y: (area.height - height) / 2 + (1 - Math.min(1, p)) * 8
+
+                  Behavior on x {
+                    NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+                  }
+
+                  Component.onCompleted: appear.start()
+
+                  onDyingChanged: if (dying) {
+                    appear.stop()
+                    vanish.start()
+                  }
+
+                  NumberAnimation {
+                    id: appear
+                    target: dot
+                    property: "p"
+                    to: 1
+                    duration: 300
+                    easing.type: Easing.OutBack
+                    easing.overshoot: 2.2
+                  }
+
+                  SequentialAnimation {
+                    id: vanish
+                    PauseAnimation { duration: Math.min(dot.index, 10) * 22 }
+                    NumberAnimation { target: dot; property: "p"; to: 0; duration: 170; easing.type: Easing.InCubic }
+                    ScriptAction { script: dotModel.remove(dot.index) }
+                  }
                 }
               }
             }
