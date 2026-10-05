@@ -101,7 +101,7 @@ FocusScope {
                     Rectangle {
                         anchors.fill: parent
                         radius: 24
-                        color: root.pendingAction === modelData.key ? Style.yellow : (actionButton.highlighted ? Colors.primary : Colors.surfaceContainerLow)
+                        color: root.pendingAction === modelData.key ? Colors.tertiary : (actionButton.highlighted ? Colors.primary : Colors.surfaceContainerLow)
 
                         Behavior on color {
                             ColorAnimation {
