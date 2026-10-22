@@ -40,7 +40,9 @@ Item {
     { name: "Nord",        script: "nord.sh",        walls: "Nord",
       bg: "#2e3440", surface: "#3b4252", accent: "#88c0d0", fg: "#d8dee9" },
     { name: "Rosé Pine",   script: "RosePine.sh",    walls: "RosePine",
-      bg: "#191724", surface: "#1f1d2e", accent: "#ebbcba", fg: "#e0def4" }
+      bg: "#191724", surface: "#1f1d2e", accent: "#ebbcba", fg: "#e0def4" },
+    { name: "Everforest",  script: "Everforest.sh",  walls: "Everforest",
+      bg: "#0f1416", surface: "#1b2023", accent: "#89d0ed", fg: "#b3cad5" }
   ]
   // ──────────────────────
 
