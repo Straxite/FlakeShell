@@ -20,8 +20,6 @@ PACMAN_PACKAGES=(
     hyprshot
     xdg-desktop-portal-gnome
     quickshell
-    swaync
-    swayosd
     waybar-cava
     wl-clipboard
     cliphist
